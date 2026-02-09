@@ -9,5 +9,9 @@
     "@types/ws": "^8.18.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "dev": "npx tsc && node index.js",
+    "start": "node index.js"
   }
 }

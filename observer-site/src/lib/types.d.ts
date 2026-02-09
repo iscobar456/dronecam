@@ -3,11 +3,11 @@ import { UUID } from "node:crypto";
 
 type Message = {
     type: "ident" | "list" | "sd" | "ice",
-    body: null | MessageBody,
+    body: null | string | MessageBody,
 }
 
 type Node = {
-    id: string,
+    id: UUID,
     name: string
 }
 
@@ -19,7 +19,7 @@ type IdentResponseBody = Node;
 type ListResponseBody = Node[];
 
 type MessageBody = {
-    from: string,
-    to: string,
-    data: string | object,
+    from: UUID,
+    to: UUID,
+    data: object
 }
