@@ -2,8 +2,8 @@ import { UUID } from "node:crypto";
 
 
 type Message = {
-    type: "ident" | "list" | "sd" | "ice",
-    body: null | MessageBody,
+    type: "ident" | "list" | "sd" | "ice" | "select" | "disc",
+    body: MessageBody,
 }
 
 type Node = {
@@ -21,5 +21,5 @@ type ListResponseBody = Node[];
 type MessageBody = {
     from: string,
     to: string,
-    data: string | object,
+    data: string,
 }
