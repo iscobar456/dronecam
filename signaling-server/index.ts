@@ -1,13 +1,14 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import type { Response, Message, MessageBody, Node } from './messageTypes.d.ts';
-import { randomUUID, } from 'node:crypto';
 import type { Config } from 'unique-names-generator';
 import { uniqueNamesGenerator, languages } from 'unique-names-generator';
+import hash from 'object-hash';
+import type { IncomingMessage } from 'node:http';
 
 type Connection = {
     type: "unknown" | "observer" | "drone",
     name: string,
-    socket: WebSocket
+    socket: WebSocket,
 }
 
 const connections: Map<string, Connection> = new Map();
@@ -20,24 +21,21 @@ function main() {
         dictionaries: [languages]
     }
 
-    wss.on('connection', function connection(ws: WebSocket) {
+    wss.on('connection', function connection(ws: WebSocket, req: IncomingMessage) {
+        const url = new URL(req.url || "", "http://localhost");
+        const clientId = url.searchParams.get("id");
+        const clientType = url.searchParams.get("type");
+        if (!clientId || (clientType != "drone" && clientType != "observer")) {
+            console.log("No ID or Invalid type")
+            return;
+        }
         const conn: Connection = {
-            type: "unknown",
+            type: clientType,
             name: uniqueNamesGenerator(config),
             socket: ws,
         }
-        const connId = randomUUID().toString();
-        connections.set(connId, conn);
-
-        const response: Response = {
-            type: "ident",
-            body: {
-                id: connId,
-                name: conn.name,
-            }
-        }
-
-        sendMessage(ws, JSON.stringify(response));
+        console.log(`Set id ${clientId} to type ${clientType}`)
+        connections.set(clientId, conn);
 
         ws.on('error', console.error);
         ws.on('message', messageHandler);
@@ -56,8 +54,9 @@ function main() {
         switch (message.type) {
             case 'sd':
             case 'ice':
-                console.log("forwarding message");
                 conn = connections.get(messageBody.to);
+                connections.forEach((value, key) => { console.log(key + " / " + messageBody.to) })
+                console.log(`Forwarding message to ${conn?.name}`);
                 conn?.socket.send(messageBody.data);
                 break;
 
@@ -72,28 +71,6 @@ function main() {
                     body: JSON.stringify(droneList)
                 }
                 sendMessage(conn.socket, JSON.stringify(response));
-                break;
-
-            case 'ident':
-                let id = messageBody.from;
-                conn = connections.get(id);
-                if (conn == null) {
-                    return
-                }
-                const clientType = messageBody.data;
-                if (clientType == 'observer' || clientType == 'drone') {
-                    conn.type = clientType;
-                }
-                console.log(connections);
-                break;
-
-            case 'select':
-                conn = connections.get(messageBody.to);
-                if (conn == null) {
-                    return;
-                }
-                response = JSON.stringify({ type: 'select', body: messageBody.from });
-                sendMessage(conn.socket, response);
                 break;
 
             case 'disc': // disconnect

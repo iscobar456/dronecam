@@ -1,6 +1,6 @@
 import WebSocket, { WebSocketServer } from 'ws';
-import { randomUUID, } from 'node:crypto';
 import { uniqueNamesGenerator, languages } from 'unique-names-generator';
+import hash from 'object-hash';
 const connections = new Map();
 function main() {
     console.log("starting server...");
@@ -8,22 +8,21 @@ function main() {
     const config = {
         dictionaries: [languages]
     };
-    wss.on('connection', function connection(ws) {
+    wss.on('connection', function connection(ws, req) {
+        const url = new URL(req.url || "", "http://localhost");
+        const clientId = url.searchParams.get("id");
+        const clientType = url.searchParams.get("type");
+        if (!clientId || (clientType != "drone" && clientType != "observer")) {
+            console.log("No ID or Invalid type");
+            return;
+        }
         const conn = {
-            type: "unknown",
+            type: clientType,
             name: uniqueNamesGenerator(config),
             socket: ws,
         };
-        const connId = randomUUID().toString();
-        connections.set(connId, conn);
-        const response = {
-            type: "ident",
-            body: {
-                id: connId,
-                name: conn.name,
-            }
-        };
-        sendMessage(ws, JSON.stringify(response));
+        console.log(`Set id ${clientId} to type ${clientType}`);
+        connections.set(clientId, conn);
         ws.on('error', console.error);
         ws.on('message', messageHandler);
         ws.on('close', () => {
@@ -39,8 +38,9 @@ function main() {
         switch (message.type) {
             case 'sd':
             case 'ice':
-                console.log("forwarding message");
                 conn = connections.get(messageBody.to);
+                connections.forEach((value, key) => { console.log(key + " / " + messageBody.to); });
+                console.log(`Forwarding message to ${conn?.name}`);
                 conn?.socket.send(messageBody.data);
                 break;
             case 'list':
@@ -54,26 +54,6 @@ function main() {
                     body: JSON.stringify(droneList)
                 };
                 sendMessage(conn.socket, JSON.stringify(response));
-                break;
-            case 'ident':
-                let id = messageBody.from;
-                conn = connections.get(id);
-                if (conn == null) {
-                    return;
-                }
-                const clientType = messageBody.data;
-                if (clientType == 'observer' || clientType == 'drone') {
-                    conn.type = clientType;
-                }
-                console.log(connections);
-                break;
-            case 'select':
-                conn = connections.get(messageBody.to);
-                if (conn == null) {
-                    return;
-                }
-                response = JSON.stringify({ type: 'select', body: messageBody.from });
-                sendMessage(conn.socket, response);
                 break;
             case 'disc': // disconnect
         }

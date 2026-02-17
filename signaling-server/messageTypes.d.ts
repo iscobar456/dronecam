@@ -1,25 +1,23 @@
-import { UUID } from "node:crypto";
-
-
-type Message = {
+export type Message = {
     type: "ident" | "list" | "sd" | "ice" | "select" | "disc",
     body: MessageBody,
 }
 
-type Node = {
+export type Node = {
     id: string,
     name: string
 }
 
-type Response = {
+export type Response = {
     type: "ident" | "list" | "confirm",
     body: IdentResponseBody | ListResponseBody,
 }
-type IdentResponseBody = Node;
-type ListResponseBody = Node[];
+export type IdentResponseBody = Node;
+export type ListResponseBody = Node[];
 
-type MessageBody = {
+export type MessageBody = {
     from: string,
     to: string,
     data: string,
 }
+
