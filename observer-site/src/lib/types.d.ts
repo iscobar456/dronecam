@@ -21,5 +21,5 @@ type ListResponseBody = Node[];
 type MessageBody = {
     from: UUID,
     to: UUID,
-    data: object
+    data: string
 }

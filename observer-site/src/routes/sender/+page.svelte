@@ -5,12 +5,12 @@
 		main();
 	});
 
-	const SSURL = 'ws://localhost:8080';
+	const id = crypto.randomUUID();
+	const SSURL = `ws://localhost:8080?id=${id}&type=drone`;
 	let offer = $state({});
 	let offerString = $derived(JSON.stringify(offer));
 	let pc: RTCPeerConnection;
 	let ws: WebSocket;
-	let id = $state('');
 	let observerId = $state('');
 	let iceBacklog: Array<RTCIceCandidate> = $state([]);
 
@@ -44,21 +44,37 @@
 				videoElement.srcObject = stream;
 			}
 			stream.getTracks().forEach((track) => {
-				console.log(track);
 				pc.addTrack(track, stream);
 			});
 		});
 	};
 
+	const updateDescription = (descr: RTCSessionDescriptionInit) => {
+		pc.setLocalDescription(descr);
+		if (observerId != null) {
+			const message = {
+				type: 'sd',
+				body: {
+					from: id,
+					to: observerId,
+					data: JSON.stringify(descr)
+				}
+			};
+			sendMessage(ws, JSON.stringify(message));
+		}
+	};
+
 	const handleNegotiation = async () => {
 		console.log('track added');
 		const offer = await pc.createOffer();
+		updateDescription(offer);
+	};
 
-		pc.setLocalDescription(offer);
+	const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+		await pc.setRemoteDescription(offer);
 	};
 
 	const handleIce = (event: RTCPeerConnectionIceEvent) => {
-		console.log(event.candidate);
 		if (event.candidate == null) {
 			return;
 		}
@@ -70,6 +86,7 @@
 	};
 
 	const sendIceCandidate = (candidate: RTCIceCandidate) => {
+		console.log('sending ice candidate');
 		const message = JSON.stringify({
 			type: 'ice',
 			body: {
@@ -78,33 +95,36 @@
 				data: JSON.stringify(candidate)
 			}
 		});
-		ws.send(message);
+		sendMessage(ws, message);
 	};
 
 	const messageHandler = async (event: MessageEvent) => {
-		const data = JSON.parse(event.data);
-		if (data.type === 'ident') {
-			id = data.body.id;
-			console.log('sending ident message');
-			const message = JSON.stringify({ type: 'ident', body: { to: '', from: id, data: 'drone' } });
-			ws.send(message);
-		} else if (data.type === 'sd') {
-			const answerer = data.body.from;
-			if (answerer != observerId) {
-				console.log('invalid sender');
-				return;
+		const message = JSON.parse(event.data);
+		console.log('Received message: ');
+		console.log(message);
+		if (message.type === 'sd') {
+			const offerer = message.body.from;
+			if (observerId == null) {
+				observerId = offerer;
+				iceBacklog.forEach((candidate: RTCIceCandidate) => {
+					sendIceCandidate(candidate);
+				});
 			}
-			const answer = data.body.data;
-			await pc.setRemoteDescription(answer);
-		} else if (data.type === 'ice') {
-			const iceCandidate = data.body.data;
+			handleOffer(JSON.parse(message.body.data) as RTCSessionDescriptionInit);
+		} else if (message.type === 'ice') {
+			// if (observerId != message.body.from) {
+			// 	console.log('invalid ice sender');
+			// 	return;
+			// }
+			const iceCandidate = JSON.parse(message.body.data);
 			pc.addIceCandidate(iceCandidate);
-		} else if (data.type === 'select') {
-			observerId = data.body;
-			iceBacklog.forEach((candidate: RTCIceCandidate) => {
-				sendIceCandidate(candidate);
-			});
+		} else if (message.type === 'disc') {
 		}
+	};
+
+	const sendMessage = (ws: WebSocket, message: string) => {
+		console.log(`Sending message ${message}`);
+		ws.send(message);
 	};
 </script>
 
