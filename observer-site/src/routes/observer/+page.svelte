@@ -8,7 +8,7 @@
 
 	const id = crypto.randomUUID();
 	let ws: WebSocket;
-	let pc: RTCPeerConnection;
+	var pc: RTCPeerConnection;
 	let offer: RTCSessionDescriptionInit | null = $state(null);
 	let peerId = $state('');
 	let iceQueue: Array<RTCIceCandidate> = $state([]);
@@ -127,27 +127,33 @@
 			}
 		};
 		sendMessage(ws, JSON.stringify(message));
+		console.log('sent sd');
+		console.log(message);
 	};
 
 	const sendMessage = (ws: WebSocket, message: string) => {
-		// console.log(`Sending message ${message}`);
 		ws.send(message);
 	};
 </script>
 
-<div>
-	<button onclick={refreshList}>Refresh list of drones</button>
-	<p>{peerId}</p>
-	<div class="m-auto">
+<div class="mx-auto flex w-md flex-col items-center">
+	<button class="self-end bg-blue-400 px-3 py-2" onclick={refreshList}
+		>Refresh list of drones</button
+	>
+	<hr class="my-4 h-px w-full bg-black" />
+	<ol class="flex w-full flex-col gap-3">
 		{#each drones as drone (drone.id)}
-			<div>
+			<li class="flex w-full">
 				<p>{drone.name}</p>
 				<button
+					class="ml-auto bg-green-300 px-2 py-1"
 					onclick={() => {
 						connectToDrone(drone.id);
 					}}>Connect</button
 				>
-			</div>
+			</li>
 		{/each}
-	</div>
+	</ol>
+	<hr class="my-4 h-px w-full bg-black" />
+	<p>{peerId}</p>
 </div>

@@ -39,7 +39,6 @@ function main() {
             case 'sd':
             case 'ice':
                 conn = connections.get(messageBody.to);
-                connections.forEach((value, key) => { console.log(key + " / " + messageBody.to); });
                 console.log(`Forwarding message to ${conn?.name}`);
                 conn?.socket.send(JSON.stringify(message));
                 break;

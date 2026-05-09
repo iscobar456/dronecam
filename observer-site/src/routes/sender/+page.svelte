@@ -24,6 +24,9 @@
 		pc = new RTCPeerConnection(config);
 		pc.onnegotiationneeded = handleNegotiation;
 		pc.onicecandidate = handleIce;
+		pc.onconnectionstatechange = () => {
+			console.log(pc.connectionState);
+		};
 
 		ws = new WebSocket(SSURL);
 		ws.addEventListener('open', () => {
@@ -67,11 +70,22 @@
 	const handleNegotiation = async () => {
 		console.log('track added');
 		const offer = await pc.createOffer();
+		offerString = offer.sdp || '';
 		updateDescription(offer);
 	};
 
 	const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+		console.log('setting remote description...');
 		await pc.setRemoteDescription(offer);
+		let remotePre = document.querySelector('#remote');
+		if (remotePre && pc.remoteDescription) {
+			remotePre.textContent = pc.remoteDescription.sdp;
+		}
+		iceBacklog.forEach((candidate) => {
+			console.log('adding queued candidate');
+			handleReceivedIce(candidate);
+		});
+		console.log('pc state is ' + pc.connectionState);
 	};
 
 	const handleIce = (event: RTCPeerConnectionIceEvent) => {
@@ -100,8 +114,7 @@
 
 	const messageHandler = async (event: MessageEvent) => {
 		const message = JSON.parse(event.data);
-		console.log('Received message: ');
-		console.log(message);
+		console.log('Received message: ' + message.type);
 		if (message.type === 'sd') {
 			const offerer = message.body.from;
 			if (observerId == null) {
@@ -112,13 +125,19 @@
 			}
 			handleOffer(JSON.parse(message.body.data) as RTCSessionDescriptionInit);
 		} else if (message.type === 'ice') {
-			// if (observerId != message.body.from) {
-			// 	console.log('invalid ice sender');
-			// 	return;
-			// }
 			const iceCandidate = JSON.parse(message.body.data);
-			pc.addIceCandidate(iceCandidate);
+			handleReceivedIce(iceCandidate);
 		} else if (message.type === 'disc') {
+		}
+	};
+
+	const handleReceivedIce = (candidate: RTCIceCandidate) => {
+		if (!pc.remoteDescription) {
+			console.log('adding ice to back log');
+			iceBacklog.push(candidate);
+		} else {
+			console.log('adding ice candidate');
+			pc.addIceCandidate(candidate);
 		}
 	};
 
@@ -128,9 +147,16 @@
 	};
 </script>
 
-<video autoplay></video>
-<button onclick={startVideo} style="padding: 10px; background-color: beige;"
-	>Start video stream</button
->
-<pre
-	style="max-width: 500px; white-space: normal; max-height: 200px; overflow: scroll;">{offerString}</pre>
+<div class="flex justify-center">
+	<div class="flex flex-col gap-4">
+		<video autoplay></video>
+		<button onclick={startVideo} style="padding: 10px; background-color: beige;"
+			>Start video stream</button
+		>
+		<pre
+			style="max-width: 500px; white-space: normal; max-height: 200px; overflow: scroll;">{offerString}</pre>
+		<pre
+			style="max-width: 500px; white-space: normal; max-height: 200px; overflow: scroll;"
+			id="remote"></pre>
+	</div>
+</div>
