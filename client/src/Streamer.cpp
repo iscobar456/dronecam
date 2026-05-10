@@ -1,5 +1,8 @@
 #include "Streamer.hpp"
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <glib-object.h>
 #include <gst/gstbuffer.h>
 #include <gst/gstmemory.h>
 #include <gst/gstsample.h>
@@ -7,10 +10,12 @@
 void Streamer::startStream() {
   gst_init(0, nullptr);
 
+  ssrc = static_cast<uint32_t>(std::rand());
+
   constructPipeline();
   startPipeline();
 
-  wrtcManager = WebRTCManager();
+  wrtcManager = ConnectionManager();
   wrtcManager.init();
   captureData();
 
@@ -57,6 +62,8 @@ void Streamer::constructPipeline() {
   source = gst_element_factory_make("v4l2src", "source");
   parser = gst_element_factory_make("h264parse", "parser");
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
+  g_object_set(packetizer, "ssrc", ssrc, NULL);
+  g_object_set(packetizer, "codec", 96, NULL);
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
   if (!pipeline || !source || !parser || !packetizer || !sink) {
@@ -103,7 +110,7 @@ void Streamer::captureData() {
     GstBuffer *sampleBuffer = gst_sample_get_buffer(sample);
     GstMapInfo map;
     if (gst_buffer_map(sampleBuffer, &map, GST_MAP_READ)) {
-      wrtcManager.sendRTPPacket(map.data, map.size);
+      wrtcManager.sendPacket(map.data, map.size);
 
       gst_buffer_unmap(sampleBuffer, &map);
     }

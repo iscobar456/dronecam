@@ -1,11 +1,12 @@
 #pragma once
 
+#include "ConnectionManager.hpp"
+#include <cstdint>
 #include <gst/app/gstappsink.h>
 #include <gst/gst.h>
 #include <gst/gstmessage.h>
 #include <gst/gstsample.h>
 #include <gst/gstutils.h>
-#include "WebRTCManager.hpp"
 
 class Streamer {
 private:
@@ -15,7 +16,9 @@ private:
   GstMessage *msg;
   GstStateChangeReturn ret;
 
-  WebRTCManager wrtcManager;
+  ConnectionManager wrtcManager;
+
+  uint32_t ssrc;
 
   void constructPipeline();
   bool startPipeline();
