@@ -7,12 +7,12 @@
 
 	const id = crypto.randomUUID();
 	const SSURL = `ws://localhost:8080?id=${id}&type=drone`;
-	let offer = $state({});
-	let offerString = $derived(JSON.stringify(offer));
+	let offerString = $state('');
 	let pc: RTCPeerConnection;
 	let ws: WebSocket;
 	let observerId = $state('');
-	let iceBacklog: Array<RTCIceCandidate> = $state([]);
+	let pendingOutgoingIce: Array<RTCIceCandidate> = $state([]);
+	let pendingIncomingIce: Array<RTCIceCandidate> = $state([]);
 
 	const main = () => {
 		const config = {
@@ -22,7 +22,6 @@
 			]
 		};
 		pc = new RTCPeerConnection(config);
-		pc.onnegotiationneeded = handleNegotiation;
 		pc.onicecandidate = handleIce;
 		pc.onconnectionstatechange = () => {
 			console.log(pc.connectionState);
@@ -52,39 +51,37 @@
 		});
 	};
 
-	const updateDescription = (descr: RTCSessionDescriptionInit) => {
-		pc.setLocalDescription(descr);
-		if (observerId != null) {
-			const message = {
-				type: 'sd',
-				body: {
-					from: id,
-					to: observerId,
-					data: JSON.stringify(descr)
-				}
-			};
-			sendMessage(ws, JSON.stringify(message));
-		}
-	};
-
-	const handleNegotiation = async () => {
-		console.log('track added');
-		const offer = await pc.createOffer();
-		offerString = offer.sdp || '';
-		updateDescription(offer);
-	};
-
-	const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+	const handleOffer = async (remote: RTCSessionDescriptionInit) => {
 		console.log('setting remote description...');
-		await pc.setRemoteDescription(offer);
+		try {
+			if (pc.signalingState === 'have-local-offer') {
+				await pc.setLocalDescription({ type: 'rollback' });
+			}
+		} catch (e) {
+			console.warn('rollback before remote offer', e);
+		}
+		await pc.setRemoteDescription(remote);
+		const answer = await pc.createAnswer();
+		await pc.setLocalDescription(answer);
+		offerString = answer.sdp || '';
 		let remotePre = document.querySelector('#remote');
 		if (remotePre && pc.remoteDescription) {
 			remotePre.textContent = pc.remoteDescription.sdp;
 		}
-		iceBacklog.forEach((candidate) => {
+		const message = {
+			type: 'sd',
+			body: {
+				from: id,
+				to: observerId,
+				data: JSON.stringify(answer)
+			}
+		};
+		sendMessage(ws, JSON.stringify(message));
+		pendingIncomingIce.forEach((candidate) => {
 			console.log('adding queued candidate');
-			handleReceivedIce(candidate);
+			pc.addIceCandidate(candidate);
 		});
+		pendingIncomingIce.length = 0;
 		console.log('pc state is ' + pc.connectionState);
 	};
 
@@ -95,7 +92,7 @@
 		if (observerId) {
 			sendIceCandidate(event.candidate);
 		} else {
-			iceBacklog.push(event.candidate);
+			pendingOutgoingIce.push(event.candidate);
 		}
 	};
 
@@ -117,13 +114,14 @@
 		console.log('Received message: ' + message.type);
 		if (message.type === 'sd') {
 			const offerer = message.body.from;
-			if (observerId == null) {
+			if (!observerId) {
 				observerId = offerer;
-				iceBacklog.forEach((candidate: RTCIceCandidate) => {
+				pendingOutgoingIce.forEach((candidate: RTCIceCandidate) => {
 					sendIceCandidate(candidate);
 				});
+				pendingOutgoingIce.length = 0;
 			}
-			handleOffer(JSON.parse(message.body.data) as RTCSessionDescriptionInit);
+			await handleOffer(JSON.parse(message.body.data) as RTCSessionDescriptionInit);
 		} else if (message.type === 'ice') {
 			const iceCandidate = JSON.parse(message.body.data);
 			handleReceivedIce(iceCandidate);
@@ -134,7 +132,7 @@
 	const handleReceivedIce = (candidate: RTCIceCandidate) => {
 		if (!pc.remoteDescription) {
 			console.log('adding ice to back log');
-			iceBacklog.push(candidate);
+			pendingIncomingIce.push(candidate);
 		} else {
 			console.log('adding ice candidate');
 			pc.addIceCandidate(candidate);

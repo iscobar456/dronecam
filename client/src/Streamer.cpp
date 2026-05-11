@@ -3,21 +3,29 @@
 #include <cstdint>
 #include <cstdlib>
 #include <glib-object.h>
+#include <glib.h>
 #include <gst/gstbuffer.h>
 #include <gst/gstmemory.h>
 #include <gst/gstsample.h>
+#include <thread>
 
 void Streamer::startStream() {
   gst_init(0, nullptr);
 
   ssrc = static_cast<uint32_t>(std::rand());
 
-  constructPipeline();
-  startPipeline();
+  connMan.init();
+  connMan.configureTrack(ssrc);
 
-  wrtcManager = ConnectionManager();
-  wrtcManager.init();
-  captureData();
+  if (!constructPipeline()) {
+    return;
+  }
+  if (!startPipeline()) {
+    return;
+  }
+
+  captureThreadRunning = true;
+  captureThread = std::thread(&Streamer::captureData, this);
 
   /* Wait until error or EOS */
   bus = gst_element_get_bus(pipeline);
@@ -57,18 +65,54 @@ void Streamer::startStream() {
   gst_object_unref(pipeline);
 };
 
-void Streamer::constructPipeline() {
+void Streamer::stopStream() {
+  captureThreadRunning = false;
+  if (captureThread.joinable()) {
+    captureThread.join();
+  }
+}
+
+bool Streamer::constructPipeline() {
   pipeline = gst_pipeline_new("dronecam");
   source = gst_element_factory_make("v4l2src", "source");
+  if (!pipeline || !source) {
+    g_printerr("Not all elements could be created.\n");
+    if (pipeline) {
+      gst_object_unref(pipeline);
+      pipeline = nullptr;
+    }
+    if (source) {
+      gst_object_unref(source);
+      source = nullptr;
+    }
+    return false;
+  }
+  const char *v4l2_dev = std::getenv("DRONECAM_V4L2_DEVICE");
+  if (v4l2_dev == nullptr || v4l2_dev[0] == '\0') {
+    v4l2_dev = "/dev/video0";
+  }
+  g_object_set(source, "device", v4l2_dev, NULL);
+  if (!g_file_test(v4l2_dev, G_FILE_TEST_EXISTS)) {
+    g_printerr(
+        "V4L2 device does not exist: %s\n"
+        "Set DRONECAM_V4L2_DEVICE to a node under /dev (e.g. /dev/video1). "
+        "List devices: ls -la /dev/video*\n",
+        v4l2_dev);
+    gst_object_unref(source);
+    source = nullptr;
+    gst_object_unref(pipeline);
+    pipeline = nullptr;
+    return false;
+  }
   parser = gst_element_factory_make("h264parse", "parser");
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   g_object_set(packetizer, "ssrc", ssrc, NULL);
-  g_object_set(packetizer, "codec", 96, NULL);
+  g_object_set(packetizer, "pt", 96, NULL);
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
-  if (!pipeline || !source || !parser || !packetizer || !sink) {
+  if (!parser || !packetizer || !sink) {
     g_printerr("Not all elements could be created.\n");
-    return;
+    return false;
   }
 
   /* Build the pipeline */
@@ -77,27 +121,54 @@ void Streamer::constructPipeline() {
   if (gst_element_link(source, parser) != TRUE) {
     g_printerr("Source and parser could not be linked.\n");
     gst_object_unref(pipeline);
-    return;
+    return false;
   }
 
   if (gst_element_link(parser, packetizer) != TRUE) {
     g_printerr("Parser and packetizer could not be linked.\n");
     gst_object_unref(pipeline);
-    return;
+    return false;
   }
 
   if (gst_element_link(packetizer, (GstElement *)sink) != TRUE) {
     g_printerr("Packetizer and sink could not be linked.\n");
     gst_object_unref(pipeline);
-    return;
+    return false;
   }
+
+  return true;
 }
 
 bool Streamer::startPipeline() {
   ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
   if (ret == GST_STATE_CHANGE_FAILURE) {
+    GstBus *diag_bus = gst_element_get_bus(pipeline);
+    if (diag_bus) {
+      GstMessage *m =
+          gst_bus_timed_pop_filtered(diag_bus, GST_SECOND, GST_MESSAGE_ERROR);
+      if (m) {
+        GError *err = nullptr;
+        gchar *dbg = nullptr;
+        gst_message_parse_error(m, &err, &dbg);
+        g_printerr("Pipeline error from element %s: %s\n",
+                   m->src ? GST_OBJECT_NAME(m->src) : "?",
+                   err ? err->message : "?");
+        if (dbg) {
+          g_printerr("Debugging information: %s\n", dbg);
+        }
+        g_clear_error(&err);
+        g_free(dbg);
+        gst_message_unref(m);
+      }
+      gst_object_unref(diag_bus);
+    }
     g_printerr("Unable to set the pipeline to the playing state.\n");
     gst_object_unref(pipeline);
+    pipeline = nullptr;
+    source = nullptr;
+    parser = nullptr;
+    packetizer = nullptr;
+    sink = nullptr;
     return false;
   }
   return true;
@@ -105,14 +176,24 @@ bool Streamer::startPipeline() {
 
 void Streamer::captureData() {
   GstSample *sample;
-  while (!gst_app_sink_is_eos((GstAppSink *)sink)) {
-    sample = gst_app_sink_try_pull_sample((GstAppSink *)sink, 10000);
-    GstBuffer *sampleBuffer = gst_sample_get_buffer(sample);
-    GstMapInfo map;
-    if (gst_buffer_map(sampleBuffer, &map, GST_MAP_READ)) {
-      wrtcManager.sendPacket(map.data, map.size);
+  while (captureThreadRunning && !gst_app_sink_is_eos((GstAppSink *)sink)) {
+    sample = gst_app_sink_try_pull_sample((GstAppSink *)sink, 10000000);
 
-      gst_buffer_unmap(sampleBuffer, &map);
+    if (sample == nullptr) {
+      continue;
     }
+
+    GstBuffer *sampleBuffer = gst_sample_get_buffer(sample);
+    if (sampleBuffer) {
+      GstMapInfo map;
+      if (gst_buffer_map(sampleBuffer, &map, GST_MAP_READ)) {
+        const char *mapData = reinterpret_cast<char *>(map.data);
+        connMan.sendPacket(mapData, map.size);
+
+        gst_buffer_unmap(sampleBuffer, &map);
+      }
+    }
+
+    gst_sample_unref(sample);
   }
 }

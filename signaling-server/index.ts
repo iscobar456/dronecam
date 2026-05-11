@@ -1,8 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
-import type { Response, Message, MessageBody, Node } from './messageTypes.d.ts';
+import type { Message, MessageBody, Node } from './messageTypes.d.ts';
 import type { Config } from 'unique-names-generator';
 import { uniqueNamesGenerator, languages } from 'unique-names-generator';
-import hash from 'object-hash';
 import type { IncomingMessage } from 'node:http';
 
 type Connection = {
@@ -14,8 +13,6 @@ type Connection = {
 const connections: Map<string, Connection> = new Map();
 
 function main() {
-    console.log("starting server...")
-
     const wss = new WebSocketServer({ port: 8080 });
     const config: Config = {
         dictionaries: [languages]
@@ -46,7 +43,6 @@ function main() {
 
     const messageHandler = (data: Buffer) => {
         let dataString = data.toString()
-        console.log(`Received message: ${dataString}`);
         const message: Message = JSON.parse(dataString);
         let messageBody = message.body as MessageBody;
         let response;
@@ -55,7 +51,7 @@ function main() {
             case 'sd':
             case 'ice':
                 conn = connections.get(messageBody.to);
-                console.log(`Forwarding message to ${conn?.name}`);
+                console.log(`Forwarding ${message.type} to ${messageBody.to}`);
                 conn?.socket.send(JSON.stringify(message));
                 break;
 
@@ -70,6 +66,12 @@ function main() {
                     body: JSON.stringify(droneList)
                 }
                 sendMessage(conn.socket, JSON.stringify(response));
+                break;
+
+            case 'select':
+                conn = connections.get(messageBody.to);
+                console.log(`Observer selecting ${messageBody.to}: ${JSON.stringify(message)}`);
+                conn?.socket.send(JSON.stringify(message));
                 break;
 
             case 'disc': // disconnect
@@ -97,6 +99,5 @@ function sendMessage(ws: WebSocket, message: string) {
             wsId = id;
         }
     })
-    console.log(`Sending message: "${message}" to ${wsId}`);
     ws.send(message);
 }

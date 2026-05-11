@@ -1,9 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { uniqueNamesGenerator, languages } from 'unique-names-generator';
-import hash from 'object-hash';
 const connections = new Map();
 function main() {
-    console.log("starting server...");
     const wss = new WebSocketServer({ port: 8080 });
     const config = {
         dictionaries: [languages]
@@ -30,7 +28,6 @@ function main() {
     });
     const messageHandler = (data) => {
         let dataString = data.toString();
-        console.log(`Received message: ${dataString}`);
         const message = JSON.parse(dataString);
         let messageBody = message.body;
         let response;
@@ -39,7 +36,7 @@ function main() {
             case 'sd':
             case 'ice':
                 conn = connections.get(messageBody.to);
-                console.log(`Forwarding message to ${conn?.name}`);
+                console.log(`Forwarding ${message.type} to ${messageBody.to}`);
                 conn?.socket.send(JSON.stringify(message));
                 break;
             case 'list':
@@ -53,6 +50,11 @@ function main() {
                     body: JSON.stringify(droneList)
                 };
                 sendMessage(conn.socket, JSON.stringify(response));
+                break;
+            case 'select':
+                conn = connections.get(messageBody.to);
+                console.log(`Observer selecting ${messageBody.to}: ${JSON.stringify(message)}`);
+                conn?.socket.send(JSON.stringify(message));
                 break;
             case 'disc': // disconnect
         }
@@ -75,7 +77,6 @@ function sendMessage(ws, message) {
             wsId = id;
         }
     });
-    console.log(`Sending message: "${message}" to ${wsId}`);
     ws.send(message);
 }
 //# sourceMappingURL=index.js.map
