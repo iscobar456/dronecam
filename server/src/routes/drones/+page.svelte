@@ -163,7 +163,7 @@
 			</button>
 		</li>
 		{#each drones as drone (drone.id)}
-			<li class="w-full gap-3 rounded-sm">
+			<li class="w-full gap-3 rounded-sm border">
 				<img src={DroneImage} alt="drone image" />
 				<p>{drone.name}</p>
 				<button
