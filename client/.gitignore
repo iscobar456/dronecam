@@ -1,4 +1,3 @@
 .cache/
-external/*
 build/
 vars.cmake
