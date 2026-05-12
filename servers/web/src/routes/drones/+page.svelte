@@ -2,6 +2,10 @@
 	import type { MessageBody, Node } from '$lib/types';
 	import { onMount } from 'svelte';
 	import DroneImage from '$lib/assets/mq9-reaper.jpg';
+	import { PUBLIC_ENVIRONMENT } from '$env/static/public';
+
+	const WEBSOCKET_URL =
+		PUBLIC_ENVIRONMENT == 'dev' ? 'ws://localhost:8080' : 'wss://dcsignaling.isaacspencer.com/';
 
 	onMount(() => {
 		main();
@@ -39,7 +43,7 @@
 		};
 		pc.addTransceiver('video', { direction: 'recvonly' });
 
-		ws = new WebSocket(`ws://localhost:8080?id=${id}&type=observer`);
+		ws = new WebSocket(`${WEBSOCKET_URL}?id=${id}&type=observer`);
 		ws.addEventListener('open', () => {
 			// console.log('connection established');
 		});
