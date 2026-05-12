@@ -5,6 +5,7 @@
 #include <glib-object.h>
 #include <glib.h>
 #include <gst/gstbuffer.h>
+#include <gst/gstelementfactory.h>
 #include <gst/gstmemory.h>
 #include <gst/gstsample.h>
 #include <thread>
@@ -75,22 +76,7 @@ void Streamer::stopStream() {
 bool Streamer::constructPipeline() {
   pipeline = gst_pipeline_new("dronecam");
   source = gst_element_factory_make("v4l2src", "source");
-  if (!pipeline || !source) {
-    g_printerr("Not all elements could be created.\n");
-    if (pipeline) {
-      gst_object_unref(pipeline);
-      pipeline = nullptr;
-    }
-    if (source) {
-      gst_object_unref(source);
-      source = nullptr;
-    }
-    return false;
-  }
-  const char *v4l2_dev = std::getenv("DRONECAM_V4L2_DEVICE");
-  if (v4l2_dev == nullptr || v4l2_dev[0] == '\0') {
-    v4l2_dev = "/dev/video0";
-  }
+  const char *v4l2_dev = V4L2_DEV; // Defined as a cmake variable
   g_object_set(source, "device", v4l2_dev, NULL);
   if (!g_file_test(v4l2_dev, G_FILE_TEST_EXISTS)) {
     g_printerr(
@@ -104,22 +90,50 @@ bool Streamer::constructPipeline() {
     pipeline = nullptr;
     return false;
   }
+  converter = gst_element_factory_make("videoconvert", "converter");
+  if (std::string(PLATFORM) == "RPI") {
+    encoder = gst_element_factory_make("v4l2h264enc", "encoder");
+  } else {
+    encoder = gst_element_factory_make("x264enc", "encoder");
+  }
   parser = gst_element_factory_make("h264parse", "parser");
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
-  if (!parser || !packetizer || !sink) {
+  if (!pipeline || !source || !converter || !encoder || !parser ||
+      !packetizer || !sink) {
     g_printerr("Not all elements could be created.\n");
     return false;
   }
 
   /* Build the pipeline */
-  gst_bin_add_many(GST_BIN(pipeline), source, parser, packetizer, sink, NULL);
+  gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
+                   packetizer, sink, NULL);
 
-  if (gst_element_link(source, parser) != TRUE) {
-    g_printerr("Source and parser could not be linked.\n");
+  if (std::string(PLATFORM) == "RPI") {
+    if (gst_element_link(source, converter) != TRUE) {
+      g_printerr("Source and converter could not be linked.\n");
+      gst_object_unref(pipeline);
+      return false;
+    }
+  } else {
+    if (gst_element_link(source, converter) != TRUE) {
+      g_printerr("Source and converter could not be linked.\n");
+      gst_object_unref(pipeline);
+      return false;
+    }
+
+    if (gst_element_link(converter, encoder) != TRUE) {
+      g_printerr("Converter and encoder could not be linked.\n");
+      gst_object_unref(pipeline);
+      return false;
+    }
+  }
+
+  if (gst_element_link(encoder, parser) != TRUE) {
+    g_printerr("Encoder and parser could not be linked.\n");
     gst_object_unref(pipeline);
     return false;
   }

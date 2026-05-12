@@ -12,7 +12,7 @@
 
 class Streamer {
 private:
-  GstElement *pipeline, *source, *parser, *packetizer;
+  GstElement *pipeline, *source, *converter, *encoder, *parser, *packetizer;
   GstAppSink *sink;
   GstBus *bus;
   GstMessage *msg;

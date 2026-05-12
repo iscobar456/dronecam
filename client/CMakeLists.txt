@@ -3,6 +3,7 @@ project(dronecam)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include("${CMAKE_SOURCE_DIR}/vars.default.cmake")
 if(EXISTS "${CMAKE_SOURCE_DIR}/vars.cmake")
     include("${CMAKE_SOURCE_DIR}/vars.cmake")
 endif()

@@ -1,0 +1,5 @@
+# set(DEBUG PRIVATE 1)
+# set(IS_ON_DEV_MACHINE PRIVATE 1)
+set(WEBSOCKET_URL "wss://dcsignaling.isaacspencer.com")
+set(PLATFORM "RPI")
+set(V4L2_DEV "/dev/video0")
