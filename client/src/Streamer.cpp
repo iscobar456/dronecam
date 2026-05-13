@@ -123,8 +123,9 @@ void Streamer::createProdElements() {
       "video/x-raw", "format", G_TYPE_STRING, "NV12", "width", G_TYPE_INT, 1280,
       "height", G_TYPE_INT, 720, "colorimetry", G_TYPE_STRING, "bt709",
       "interlace-mode", G_TYPE_STRING, "progressive", NULL);
-  GstCaps *encoder_caps =
-      gst_caps_new_simple("video/x-h264", "level", G_TYPE_STRING, "4.1", NULL);
+  GstCaps *encoder_caps = gst_caps_new_simple(
+      "video/x-h264", "level", G_TYPE_STRING, "4.1", "profile", G_TYPE_STRING,
+      "constrained-baseline", NULL);
 
   g_object_set(source_cap_filter, "caps", src_caps, NULL);
   g_object_set(encoder_cap_filter, "caps", encoder_caps, NULL);
