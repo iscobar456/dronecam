@@ -96,16 +96,15 @@ bool Streamer::constructPipeline() {
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
-  // g_object_set(packetizer, "packetization-mode", 1, NULL);
+  g_object_set(packetizer, "packetization-mode", 1, NULL);
   g_object_set(packetizer, "mtu", 1200, NULL);
   g_object_set(sink, "sync", FALSE, NULL);
 
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
-                     encoder_cap_filter, parser, queue, packetizer, sink, NULL);
+                     encoder_cap_filter, parser, packetizer, sink, NULL);
     gst_element_link_many(source, source_cap_filter, encoder,
-                          encoder_cap_filter, parser, queue, packetizer, sink,
-                          NULL);
+                          encoder_cap_filter, parser, packetizer, sink, NULL);
   } else {
     gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
                      queue, packetizer, sink, NULL);
@@ -131,16 +130,16 @@ void Streamer::createProdElements() {
   GstCaps *src_caps = gst_caps_from_string(
       "video/x-raw,format=NV12,framerate=30/"
       "1,width=1280,height=720,colorimetry=bt709,interlace-mode=(string)"
-      "progressive,level=(string)4.1,profile=constained-baseline");
-  GstCaps *encoder_caps = gst_caps_from_string(
-      "video/x-h264,profile=constrained-baseline,level=(string)4.1");
+      "progressive,level=(string)4.1,profile=main");
+  GstCaps *encoder_caps =
+      gst_caps_from_string("video/x-h264,profile=main,level=(string)4.1");
   GstStructure *extra_controls =
-      gst_structure_from_string("controls,video_gop_size=10,"
+      gst_structure_from_string("controls,video_gop_size=30,"
                                 "repeat_sequence_header=1,"
                                 "video_bitrate_mode=1,"
                                 "video_bitrate=1500000,"
                                 "h264_i_frame_period=10,"
-                                "h264_profile=1,"
+                                "h264_profile=2,"
                                 "h264_level=12",
                                 NULL);
 
