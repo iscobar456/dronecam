@@ -60,10 +60,13 @@ void messageCallback(int id, const char *message, int size, void *connMan) {
         rtcSetRemoteDescription(cm->getPc(), sdp.c_str(), "answer");
 
     std::string remoteSdp;
-    remoteSdp.resize(4096);
+    remoteSdp.resize(12288);
 
     int getRemoteCode =
-        rtcGetRemoteDescription(cm->getPc(), remoteSdp.data(), 4096);
+        rtcGetRemoteDescription(cm->getPc(), remoteSdp.data(), 12288);
+    if (getRemoteCode > 0) {
+      remoteSdp.resize(static_cast<size_t>(getRemoteCode) - 1);
+    }
     std::cout << "get observer sdp returned code: " << getRemoteCode
               << std::endl;
     std::cout << remoteSdp << std::endl;
@@ -132,6 +135,11 @@ bool ConnectionManager::init() {
 
 void ConnectionManager::configureTrack(uint32_t ssrc) {
   std::string cname = generate_uuid();
+  /* fmtp must match rtph264pay (FU-A / packetization-mode=1). See libdatachannel
+   * Description::Video — profile string becomes a=fmtp:<pt> <this>. */
+  static const std::string kH264Fmtp =
+      "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f";
+
   rtcTrackInit rti{};
   rti.direction = RTC_DIRECTION_SENDONLY;
   rti.codec = RTC_CODEC_H264;
@@ -139,6 +147,7 @@ void ConnectionManager::configureTrack(uint32_t ssrc) {
   rti.ssrc = ssrc;
   rti.mid = "drone_feed";
   rti.name = cname.c_str();
+  rti.profile = kH264Fmtp.c_str();
 
   tr = rtcAddTrackEx(this->pc, &rti);
   rtcSetOpenCallback(tr, &trackOpenCallback);
@@ -177,9 +186,13 @@ void ConnectionManager::setPeerId(std::string peerId) {
 
 const std::string ConnectionManager::getSdp() {
   std::string buffer;
-  buffer.resize(4096);
-  int code = rtcGetLocalDescription(pc, buffer.data(), 4096);
-  buffer.shrink_to_fit();
+  buffer.resize(12288);
+  int code = rtcGetLocalDescription(pc, buffer.data(), 12288);
+  if (code <= 0) {
+    return {};
+  }
+  /* copyAndReturn returns (sdp.size() + 1) including trailing '\0' */
+  buffer.resize(static_cast<size_t>(code) - 1);
   return buffer;
 }
 
