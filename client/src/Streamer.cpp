@@ -101,9 +101,10 @@ bool Streamer::constructPipeline() {
 
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
-                     encoder_cap_filter, parser, packetizer, sink, NULL);
+                     encoder_cap_filter, parser, queue, packetizer, sink, NULL);
     gst_element_link_many(source, source_cap_filter, encoder,
-                          encoder_cap_filter, parser, packetizer, sink, NULL);
+                          encoder_cap_filter, parser, queue, packetizer, sink,
+                          NULL);
   } else {
     gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
                      queue, packetizer, sink, NULL);
@@ -129,9 +130,9 @@ void Streamer::createProdElements() {
   GstCaps *src_caps = gst_caps_from_string(
       "video/x-raw,format=NV12,framerate=15/"
       "1,width=1280,height=720,colorimetry=bt709,interlace-mode=(string)"
-      "progressive,level=(string)3.1,profile=constrained-baseline");
+      "progressive,level=(string)4.1,profile=constrained-baseline");
   GstCaps *encoder_caps = gst_caps_from_string(
-      "video/x-h264,profile=constrained-baseline,level=(string)3.1");
+      "video/x-h264,profile=constrained-baseline,level=(string)4.1");
   GstStructure *extra_controls =
       gst_structure_from_string("controls,video_gop_size=15,"
                                 "repeat_sequence_header=1,"
@@ -139,7 +140,7 @@ void Streamer::createProdElements() {
                                 "video_bitrate=1500000,"
                                 "h264_i_frame_period=15,"
                                 "h264_profile=1,"
-                                "h264_level=9",
+                                "h264_level=12",
                                 NULL);
 
   g_object_set(encoder, "extra-controls", extra_controls, NULL);
