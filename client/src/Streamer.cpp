@@ -137,7 +137,7 @@ void Streamer::createProdElements() {
       gst_structure_from_string("controls,video_gop_size=60,"
                                 "repeat_sequence_header=1,"
                                 "video_bitrate_mode=1,"
-                                "video_bitrate=800000,"
+                                "video_bitrate=400000,"
                                 "h264_i_frame_period=60,"
                                 "h264_profile=1,"
                                 "h264_level=11",
