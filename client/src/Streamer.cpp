@@ -101,10 +101,9 @@ bool Streamer::constructPipeline() {
 
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
-                     encoder_cap_filter, parser, queue, packetizer, sink, NULL);
+                     encoder_cap_filter, parser, packetizer, sink, NULL);
     gst_element_link_many(source, source_cap_filter, encoder,
-                          encoder_cap_filter, parser, queue, packetizer, sink,
-                          NULL);
+                          encoder_cap_filter, parser, packetizer, sink, NULL);
   } else {
     gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
                      queue, packetizer, sink, NULL);
