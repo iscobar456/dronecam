@@ -96,7 +96,6 @@ bool Streamer::constructPipeline() {
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
-  g_object_set(packetizer, "packetization-mode", 1, NULL);
   g_object_set(packetizer, "mtu", 1200, NULL);
   // g_object_set(sink, "sync", FALSE, NULL);
 
@@ -130,20 +129,19 @@ void Streamer::createProdElements() {
   GstCaps *src_caps = gst_caps_from_string(
       "video/x-raw,format=NV12,framerate=30/"
       "1,width=1280,height=720,colorimetry=bt709,interlace-mode=(string)"
-      "progressive,level=(string)4.1,profile=main");
-  GstCaps *encoder_caps =
-      gst_caps_from_string("video/x-h264,profile=main,level=(string)4.1");
+      "progressive,level=(string)3.1,profile=constrained-baseline");
+  GstCaps *encoder_caps = gst_caps_from_string(
+      "video/x-h264,profile=constrained-baseline,level=(string)3.1");
   GstStructure *extra_controls =
       gst_structure_from_string("controls,video_gop_size=30,"
                                 "repeat_sequence_header=1,"
-                                "video_bitrate_mode=1,"
+                                "video_bitrate_mode=0,"
                                 "video_bitrate=1500000,"
                                 "h264_i_frame_period=10,"
-                                "h264_profile=2,"
-                                "h264_level=12",
+                                "h264_profile=1,"
+                                "h264_level=9",
                                 NULL);
 
-  g_object_set(source, "do-timestamp", TRUE, NULL);
   g_object_set(encoder, "extra-controls", extra_controls, NULL);
   g_object_set(source_cap_filter, "caps", src_caps, NULL);
   g_object_set(encoder_cap_filter, "caps", encoder_caps, NULL);
