@@ -109,10 +109,10 @@ bool Streamer::constructPipeline() {
 void Streamer::createProdElements() {
   source = gst_element_factory_make("libcamerasrc", "source");
   source_cap_filter =
-      gst_element_factory_make("capfilter", "source cap filter");
+      gst_element_factory_make("capsfilter", "source cap filter");
   encoder = gst_element_factory_make("v4l2h264enc", "encoder");
   encoder_cap_filter =
-      gst_element_factory_make("capfilter", "encoder cap filter");
+      gst_element_factory_make("capsfilter", "encoder cap filter");
   parser = gst_element_factory_make("h264parse", "parser");
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
@@ -123,9 +123,9 @@ void Streamer::createProdElements() {
   }
 
   GstCaps *src_caps = gst_caps_new_simple(
-      "video/x-raw", "format", G_TYPE_STRING, "NV12", "width", G_TYPE_INT,
-      "1280", "height", G_TYPE_INT, "720", "colorimetry", G_TYPE_STRING,
-      "bt709", "interlace-mode", G_TYPE_STRING, "progressive", NULL);
+      "video/x-raw", "format", G_TYPE_STRING, "NV12", "width", G_TYPE_INT, 1280,
+      "height", G_TYPE_INT, 720, "colorimetry", G_TYPE_STRING, "bt709",
+      "interlace-mode", G_TYPE_STRING, "progressive", NULL);
   GstCaps *encoder_caps =
       gst_caps_new_simple("video/x-h264", "level", G_TYPE_STRING, "4.1", NULL);
 
