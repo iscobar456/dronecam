@@ -188,7 +188,7 @@ const std::string ConnectionManager::getSdp() {
 ConnectionManager::WebSocketManager::WebSocketManager(
     ConnectionManager *connMan) {
   this->cm = connMan;
-  this->id = "drone1";
+  this->id = generate_uuid();
 }
 
 void ConnectionManager::WebSocketManager::startWebSocket() {
