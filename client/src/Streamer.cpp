@@ -4,10 +4,14 @@
 #include <cstdlib>
 #include <glib-object.h>
 #include <glib.h>
+#include <gst/gst.h>
 #include <gst/gstbuffer.h>
+#include <gst/gstcapsfeatures.h>
 #include <gst/gstelementfactory.h>
 #include <gst/gstmemory.h>
 #include <gst/gstsample.h>
+#include <gst/gststructure.h>
+#include <gst/gstutils.h>
 #include <thread>
 
 void Streamer::startStream() {
@@ -75,82 +79,72 @@ void Streamer::stopStream() {
 
 bool Streamer::constructPipeline() {
   pipeline = gst_pipeline_new("dronecam");
-  source = gst_element_factory_make("v4l2src", "source");
-  const char *v4l2_dev = V4L2_DEV; // Defined as a cmake variable
-  g_object_set(source, "device", v4l2_dev, NULL);
-  if (!g_file_test(v4l2_dev, G_FILE_TEST_EXISTS)) {
-    g_printerr(
-        "V4L2 device does not exist: %s\n"
-        "Set DRONECAM_V4L2_DEVICE to a node under /dev (e.g. /dev/video1). "
-        "List devices: ls -la /dev/video*\n",
-        v4l2_dev);
-    gst_object_unref(source);
-    source = nullptr;
-    gst_object_unref(pipeline);
-    pipeline = nullptr;
-    return false;
-  }
-  converter = gst_element_factory_make("videoconvert", "converter");
-  if (std::string(PLATFORM) == "RPI") {
-    encoder = gst_element_factory_make("v4l2h264enc", "encoder");
+  if (std::string("RPI") == PLATFORM) {
+    createProdElements();
   } else {
-    encoder = gst_element_factory_make("x264enc", "encoder");
+    createDevElements();
   }
+
   parser = gst_element_factory_make("h264parse", "parser");
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
-  g_object_set(packetizer, "ssrc", ssrc, NULL);
-  g_object_set(packetizer, "pt", 96, NULL);
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
-  if (!pipeline || !source || !converter || !encoder || !parser ||
-      !packetizer || !sink) {
-    g_printerr("Not all elements could be created.\n");
-    return false;
-  }
+  g_object_set(packetizer, "ssrc", ssrc, NULL);
+  g_object_set(packetizer, "pt", 96, NULL);
 
-  /* Build the pipeline */
-  gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
-                   packetizer, sink, NULL);
-
-  if (std::string(PLATFORM) == "RPI") {
-    if (gst_element_link(source, converter) != TRUE) {
-      g_printerr("Source and converter could not be linked.\n");
-      gst_object_unref(pipeline);
-      return false;
-    }
+  if (std::string("RPI") == PLATFORM) {
+    gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
+                     encoder_cap_filter, parser, packetizer, sink, NULL);
+    gst_element_link_many(source, source_cap_filter, encoder,
+                          encoder_cap_filter, parser, packetizer, sink, NULL);
   } else {
-    if (gst_element_link(source, converter) != TRUE) {
-      g_printerr("Source and converter could not be linked.\n");
-      gst_object_unref(pipeline);
-      return false;
-    }
-
-    if (gst_element_link(converter, encoder) != TRUE) {
-      g_printerr("Converter and encoder could not be linked.\n");
-      gst_object_unref(pipeline);
-      return false;
-    }
+    gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
+                     packetizer, sink, NULL);
+    gst_element_link_many(source, converter, encoder, parser, packetizer, sink,
+                          NULL);
   }
-
-  if (gst_element_link(encoder, parser) != TRUE) {
-    g_printerr("Encoder and parser could not be linked.\n");
-    gst_object_unref(pipeline);
-    return false;
-  }
-
-  if (gst_element_link(parser, packetizer) != TRUE) {
-    g_printerr("Parser and packetizer could not be linked.\n");
-    gst_object_unref(pipeline);
-    return false;
-  }
-
-  if (gst_element_link(packetizer, (GstElement *)sink) != TRUE) {
-    g_printerr("Packetizer and sink could not be linked.\n");
-    gst_object_unref(pipeline);
-    return false;
-  }
-
   return true;
+}
+
+void Streamer::createProdElements() {
+  source = gst_element_factory_make("libcamerasrc", "source");
+  source_cap_filter =
+      gst_element_factory_make("capfilter", "source cap filter");
+  encoder = gst_element_factory_make("v4l2h264enc", "encoder");
+  encoder_cap_filter =
+      gst_element_factory_make("capfilter", "encoder cap filter");
+  parser = gst_element_factory_make("h264parse", "parser");
+  packetizer = gst_element_factory_make("rtph264pay", "packetizer");
+  sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
+
+  if (!source || !source_cap_filter || !encoder || !encoder_cap_filter) {
+    g_printerr("Not all Raspberry Pi specific elements could be created.\n");
+    return;
+  }
+
+  GstCaps *src_caps = gst_caps_new_simple(
+      "video/x-raw", "format", G_TYPE_STRING, "NV12", "width", G_TYPE_INT,
+      "1280", "height", G_TYPE_INT, "720", "colorimetry", G_TYPE_STRING,
+      "bt709", "interlace-mode", G_TYPE_STRING, "progressive", NULL);
+  GstCaps *encoder_caps =
+      gst_caps_new_simple("video/x-h264", "level", G_TYPE_STRING, "4.1", NULL);
+
+  g_object_set(source_cap_filter, "caps", src_caps, NULL);
+  g_object_set(encoder_cap_filter, "caps", encoder_caps, NULL);
+}
+
+void Streamer::createDevElements() {
+  source = gst_element_factory_make("v4l2src", "source");
+  converter = gst_element_factory_make("videoconvert", "converter");
+  encoder = gst_element_factory_make("x264enc", "encoder");
+
+  if (!source || !converter || !encoder) {
+    g_printerr(
+        "Not all development specific pipeline elements could be created.\n");
+    return;
+  }
+
+  g_object_set(source, "device", V4L2_DEV, NULL); // Defined as a cmake var
 }
 
 bool Streamer::startPipeline() {

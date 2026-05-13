@@ -12,7 +12,8 @@
 
 class Streamer {
 private:
-  GstElement *pipeline, *source, *converter, *encoder, *parser, *packetizer;
+  GstElement *pipeline, *source, *source_cap_filter, *converter, *encoder,
+      *encoder_cap_filter, *parser, *packetizer;
   GstAppSink *sink;
   GstBus *bus;
   GstMessage *msg;
@@ -25,6 +26,8 @@ private:
   uint32_t ssrc;
 
   bool constructPipeline();
+  void createProdElements();
+  void createDevElements();
   bool startPipeline();
   void captureData();
 
