@@ -92,10 +92,11 @@ bool Streamer::constructPipeline() {
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
   g_object_set(parser, "config-interval", 1, NULL);
-  g_object_set(queue, "max-size-buffers", 5, NULL);
-  g_object_set(queue, "leaky", 5, NULL);
+  g_object_set(queue, "max-size-buffers", 2, NULL);
+  g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
+  g_object_set(sink, "sync", FALSE, NULL);
 
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
