@@ -96,7 +96,7 @@ bool Streamer::constructPipeline() {
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
-  g_object_set(packetizer, "packetization-mode", 1, NULL);
+  // g_object_set(packetizer, "packetization-mode", 1, NULL);
   g_object_set(packetizer, "mtu", 1200, NULL);
   g_object_set(sink, "sync", FALSE, NULL);
 
