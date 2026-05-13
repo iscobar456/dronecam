@@ -142,6 +142,7 @@ void Streamer::createProdElements() {
                                 "h264_level=12",
                                 NULL);
 
+  g_object_set(source, "do-timestamp", TRUE, NULL);
   g_object_set(encoder, "extra-controls", extra_controls, NULL);
   g_object_set(source_cap_filter, "caps", src_caps, NULL);
   g_object_set(encoder_cap_filter, "caps", encoder_caps, NULL);
