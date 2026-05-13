@@ -154,25 +154,11 @@ void ConnectionManager::configureTrack(uint32_t ssrc) {
   rtcSetClosedCallback(tr, &trackClosedCallback);
   rtcSetErrorCallback(tr, &trackErrorCallback);
 
-  /* RtcpNackResponder must chain BEFORE PacingHandler: pacing queues RTP in
-   * outgoing() and does not forward the batch to next, so NACK cache would
-   * never see packets if pacing were first. See libdatachannel plan. */
   int nackErr = rtcChainRtcpNackResponder(tr, NACK_CACHE_PACKETS);
-  if (nackErr < 0) {
-    std::cerr << "rtcChainRtcpNackResponder failed (code " << nackErr << ")\n";
-  }
 
-  /* Pace RTP (see RTP_PACING_* in vars.cmake). pacedBps =
-   * VIDEO_BITRATE * (RTP_PACING_BITRATE_MULT/100). Tune via webrtc-internals:
-   * freezeCount, nackCount, jitterBufferDelay. */
-  const double pacedBps =
-      static_cast<double>(VIDEO_BITRATE) *
-      (static_cast<double>(RTP_PACING_BITRATE_MULT) / 100.0);
+  const double pacedBps = static_cast<double>(VIDEO_BITRATE) * 1.25;
   int paceErr =
-      rtcChainPacingHandler(tr, pacedBps, RTP_PACING_INTERVAL_MS);
-  if (paceErr < 0) {
-    std::cerr << "rtcChainPacingHandler failed (code " << paceErr << ")\n";
-  }
+      rtcChainPacingHandler(tr, pacedBps, 5); // not super sure about 5ms pacing
 };
 
 void ConnectionManager::createSdp() { rtcSetLocalDescription(pc, "offer"); }
