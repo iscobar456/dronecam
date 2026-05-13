@@ -130,6 +130,8 @@ void Streamer::createProdElements() {
   GstStructure *extra_controls =
       gst_structure_from_string("controls,video_gop_size=10,"
                                 "repeat_sequence_header=1,"
+                                "video_bitrate_mode=1,"
+                                "video_bitrate=1500000,"
                                 "h264_profile=1,"
                                 "h264_level=12",
                                 NULL);
