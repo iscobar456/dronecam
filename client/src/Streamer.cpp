@@ -87,23 +87,27 @@ bool Streamer::constructPipeline() {
   }
 
   parser = gst_element_factory_make("h264parse", "parser");
+  queue = gst_element_factory_make("queue", "queue");
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
   g_object_set(parser, "config-interval", 1, NULL);
+  g_object_set(queue, "max-size-buffers", 5, NULL);
+  g_object_set(queue, "leaky", 5, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
 
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
-                     encoder_cap_filter, parser, packetizer, sink, NULL);
+                     encoder_cap_filter, parser, queue, packetizer, sink, NULL);
     gst_element_link_many(source, source_cap_filter, encoder,
-                          encoder_cap_filter, parser, packetizer, sink, NULL);
+                          encoder_cap_filter, parser, queue, packetizer, sink,
+                          NULL);
   } else {
     gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
-                     packetizer, sink, NULL);
-    gst_element_link_many(source, converter, encoder, parser, packetizer, sink,
-                          NULL);
+                     queue, packetizer, sink, NULL);
+    gst_element_link_many(source, converter, encoder, parser, queue, packetizer,
+                          sink, NULL);
   }
   return true;
 }
@@ -131,7 +135,8 @@ void Streamer::createProdElements() {
       gst_structure_from_string("controls,video_gop_size=10,"
                                 "repeat_sequence_header=1,"
                                 "video_bitrate_mode=1,"
-                                "video_bitrate=1000000,"
+                                "video_bitrate=1500000,"
+                                "h264_i_frame_period=30,"
                                 "h264_profile=1,"
                                 "h264_level=12",
                                 NULL);
