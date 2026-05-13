@@ -123,14 +123,14 @@ void Streamer::createProdElements() {
   GstCaps *src_caps = gst_caps_from_string(
       "video/x-raw,format=NV12,framerate=10/"
       "1,width=1280,height=720,colorimetry=bt709,interlace-mode=(string)"
-      "progressive,level=(string)3");
-  GstCaps *encoder_caps =
-      gst_caps_from_string("video/x-h264,profile=baseline,level=(string)3");
+      "progressive,level=(string)4.1,profile=constained-baseline");
+  GstCaps *encoder_caps = gst_caps_from_string(
+      "video/x-h264,profile=constrained-baseline,level=(string)4.1");
   GstStructure *extra_controls =
       gst_structure_from_string("controls,video_gop_size=30,"
                                 "repeat_sequence_header=1,"
-                                "h264_profile=0,"
-                                "h264_level=8",
+                                "h264_profile=1,"
+                                "h264_level=12",
                                 NULL);
 
   g_object_set(encoder, "extra-controls", extra_controls, NULL);
