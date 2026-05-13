@@ -90,6 +90,7 @@ bool Streamer::constructPipeline() {
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
+  g_object_set(parser, "config-interval", 1, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
 
@@ -127,7 +128,7 @@ void Streamer::createProdElements() {
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)4.1");
   GstStructure *extra_controls =
-      gst_structure_from_string("controls,video_gop_size=30,"
+      gst_structure_from_string("controls,video_gop_size=10,"
                                 "repeat_sequence_header=1,"
                                 "h264_profile=1,"
                                 "h264_level=12",
