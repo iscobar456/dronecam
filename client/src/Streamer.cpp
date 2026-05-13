@@ -96,7 +96,7 @@ bool Streamer::constructPipeline() {
    * Roll back to -1 if the receiver loses decode after GOP switches.
    * Acceptance: chrome://webrtc-internals — freezeCount, nackCount,
    * jitterBufferDelay. */
-  g_object_set(parser, "config-interval", 1, NULL);
+  g_object_set(parser, "config-interval", -1, NULL);
   g_object_set(queue, "max-size-buffers", 2, NULL);
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
