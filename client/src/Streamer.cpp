@@ -113,9 +113,6 @@ void Streamer::createProdElements() {
   encoder = gst_element_factory_make("v4l2h264enc", "encoder");
   encoder_cap_filter =
       gst_element_factory_make("capsfilter", "encoder cap filter");
-  parser = gst_element_factory_make("h264parse", "parser");
-  packetizer = gst_element_factory_make("rtph264pay", "packetizer");
-  sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
   if (!source || !source_cap_filter || !encoder || !encoder_cap_filter) {
     g_printerr("Not all Raspberry Pi specific elements could be created.\n");
