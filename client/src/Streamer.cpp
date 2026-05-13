@@ -97,7 +97,7 @@ bool Streamer::constructPipeline() {
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
   g_object_set(packetizer, "mtu", 1200, NULL);
-  // g_object_set(sink, "sync", FALSE, NULL);
+  g_object_set(sink, "sync", FALSE, NULL);
 
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
