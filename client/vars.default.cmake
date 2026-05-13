@@ -3,12 +3,9 @@
 set(WEBSOCKET_URL "wss://dcsignaling.isaacspencer.com")
 set(PLATFORM "RPI")
 set(V4L2_DEV "/dev/video0")
-# H.264 target bitrate (bits/s) for v4l2h264enc and RTP send pacing headroom
 set(VIDEO_BITRATE 800000)
-# RTP pacing: bitrate cap = VIDEO_BITRATE * (RTP_PACING_BITRATE_MULT/100) (e.g. 135 -> 1.35x)
-set(RTP_PACING_BITRATE_MULT 135)
 set(RTP_PACING_INTERVAL_MS 5)
-# v4l2h264enc GOP / I-frame period in frames (e.g. 30 at 30fps ~= 1s IDR; 60 ~= 2s)
 set(VIDEO_GOP_FRAMES 30)
-# libdatachannel RtcpNackResponder: max RTP packets cached for RTCP NACK retransmit
 set(NACK_CACHE_PACKETS 512)
+set(FOOTAGE_WIDTH 1280)
+SET(FOOTAGE_HEIGHT 720)
