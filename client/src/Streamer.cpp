@@ -129,7 +129,7 @@ void Streamer::createProdElements() {
 
   GstCaps *src_caps = gst_caps_from_string(
       "video/x-raw,format=NV12,framerate=30/"
-      "1,width=1280,height=720,colorimetry=bt709,interlace-mode=(string)"
+      "1,width=640,height=480,colorimetry=bt709,interlace-mode=(string)"
       "progressive");
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
@@ -137,7 +137,7 @@ void Streamer::createProdElements() {
       gst_structure_from_string("controls,video_gop_size=60,"
                                 "repeat_sequence_header=1,"
                                 "video_bitrate_mode=1,"
-                                "video_bitrate=3500000,"
+                                "video_bitrate=1500000,"
                                 "h264_i_frame_period=60,"
                                 "h264_profile=1,"
                                 "h264_level=11",
