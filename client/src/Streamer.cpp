@@ -1,6 +1,7 @@
 #include "Streamer.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <glib-object.h>
 #include <glib.h>
@@ -13,7 +14,6 @@
 #include <gst/gstsample.h>
 #include <gst/gststructure.h>
 #include <gst/gstutils.h>
-#include <cstdio>
 #include <thread>
 
 void Streamer::startStream() {
@@ -94,7 +94,8 @@ bool Streamer::constructPipeline() {
 
   /* Seconds between in-band SPS/PPS; 1s lowers burst vs every IDR (-1).
    * Roll back to -1 if the receiver loses decode after GOP switches.
-   * Acceptance: chrome://webrtc-internals — freezeCount, nackCount, jitterBufferDelay. */
+   * Acceptance: chrome://webrtc-internals — freezeCount, nackCount,
+   * jitterBufferDelay. */
   g_object_set(parser, "config-interval", 1, NULL);
   g_object_set(queue, "max-size-buffers", 2, NULL);
   g_object_set(queue, "leaky", 2, NULL);
@@ -140,7 +141,7 @@ void Streamer::createProdElements() {
   char extra_buf[384];
   std::snprintf(extra_buf, sizeof(extra_buf),
                 "controls,video_gop_size=60,"
-                "repeat_sequence_header=0,"
+                "repeat_sequence_header=1,"
                 "video_bitrate_mode=1,"
                 "video_bitrate=%d,"
                 "h264_i_frame_period=60,"
