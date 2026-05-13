@@ -154,6 +154,16 @@ void ConnectionManager::configureTrack(uint32_t ssrc) {
   rtcSetClosedCallback(tr, &trackClosedCallback);
   rtcSetErrorCallback(tr, &trackErrorCallback);
 
+  /* Pace RTP to reduce Wi‑Fi / UDP loss from IDR bursts. Headroom over VIDEO_BITRATE
+   * for RTP/UDP overhead. If freezes remain, compare freezeCount/nack in
+   * chrome://webrtc-internals before/after and tune interval or multiplier. */
+  constexpr int kPacingSendIntervalMs = 5;
+  const double pacedBps = static_cast<double>(VIDEO_BITRATE) * 1.2;
+  int paceErr = rtcChainPacingHandler(tr, pacedBps, kPacingSendIntervalMs);
+  if (paceErr < 0) {
+    std::cerr << "rtcChainPacingHandler failed (code " << paceErr << ")\n";
+  }
+
   std::cout << "successful configure" << std::endl;
 };
 

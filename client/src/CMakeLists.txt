@@ -14,6 +14,7 @@ target_link_libraries(dronecam PRIVATE PkgConfig::UUID)
 target_compile_definitions(dronecam PRIVATE WEBSOCKET_URL="${WEBSOCKET_URL}")
 target_compile_definitions(dronecam PRIVATE V4L2_DEV="${V4L2_DEV}")
 target_compile_definitions(dronecam PRIVATE PLATFORM="${PLATFORM}")
+target_compile_definitions(dronecam PRIVATE VIDEO_BITRATE=${VIDEO_BITRATE})
 
 target_include_directories(dronecam PRIVATE
     ../external/libdatachannel/deps/json/single_include

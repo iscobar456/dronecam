@@ -13,6 +13,7 @@
 #include <gst/gstsample.h>
 #include <gst/gststructure.h>
 #include <gst/gstutils.h>
+#include <cstdio>
 #include <thread>
 
 void Streamer::startStream() {
@@ -91,7 +92,10 @@ bool Streamer::constructPipeline() {
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
-  g_object_set(parser, "config-interval", -1, NULL);
+  /* Seconds between in-band SPS/PPS; 1s lowers burst vs every IDR (-1).
+   * Roll back to -1 if the receiver loses decode after GOP switches.
+   * Acceptance: chrome://webrtc-internals — freezeCount, nackCount, jitterBufferDelay. */
+  g_object_set(parser, "config-interval", 1, NULL);
   g_object_set(queue, "max-size-buffers", 2, NULL);
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
@@ -133,15 +137,21 @@ void Streamer::createProdElements() {
       "progressive");
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
-  GstStructure *extra_controls =
-      gst_structure_from_string("controls,video_gop_size=30,"
-                                "repeat_sequence_header=1,"
-                                "video_bitrate_mode=1,"
-                                "video_bitrate=800000,"
-                                "h264_i_frame_period=30,"
-                                "h264_profile=1,"
-                                "h264_level=11",
-                                NULL);
+  char extra_buf[384];
+  std::snprintf(extra_buf, sizeof(extra_buf),
+                "controls,video_gop_size=60,"
+                "repeat_sequence_header=0,"
+                "video_bitrate_mode=1,"
+                "video_bitrate=%d,"
+                "h264_i_frame_period=60,"
+                "h264_profile=1,"
+                "h264_level=11",
+                VIDEO_BITRATE);
+  GstStructure *extra_controls = gst_structure_from_string(extra_buf, NULL);
+  if (!extra_controls) {
+    g_printerr("Failed to parse v4l2h264enc extra-controls string.\n");
+    return;
+  }
 
   g_object_set(encoder, "extra-controls", extra_controls, NULL);
   g_object_set(source_cap_filter, "caps", src_caps, NULL);
