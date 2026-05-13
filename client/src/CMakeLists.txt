@@ -15,6 +15,9 @@ target_compile_definitions(dronecam PRIVATE WEBSOCKET_URL="${WEBSOCKET_URL}")
 target_compile_definitions(dronecam PRIVATE V4L2_DEV="${V4L2_DEV}")
 target_compile_definitions(dronecam PRIVATE PLATFORM="${PLATFORM}")
 target_compile_definitions(dronecam PRIVATE VIDEO_BITRATE=${VIDEO_BITRATE})
+target_compile_definitions(dronecam PRIVATE RTP_PACING_BITRATE_MULT=${RTP_PACING_BITRATE_MULT})
+target_compile_definitions(dronecam PRIVATE RTP_PACING_INTERVAL_MS=${RTP_PACING_INTERVAL_MS})
+target_compile_definitions(dronecam PRIVATE VIDEO_GOP_FRAMES=${VIDEO_GOP_FRAMES})
 
 target_include_directories(dronecam PRIVATE
     ../external/libdatachannel/deps/json/single_include

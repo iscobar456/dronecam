@@ -92,16 +92,16 @@ bool Streamer::constructPipeline() {
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
-  /* Seconds between in-band SPS/PPS; 1s lowers burst vs every IDR (-1).
-   * Roll back to -1 if the receiver loses decode after GOP switches.
-   * Acceptance: chrome://webrtc-internals — freezeCount, nackCount,
-   * jitterBufferDelay. */
+  /* config-interval=-1: insert SPS/PPS with each keyframe (default). A 1s
+   * fixed interval was tried and looked worse in testing; keep -1. Tune
+   * freezes via pacing (ConnectionManager), queue depth below, and GOP. */
   g_object_set(parser, "config-interval", -1, NULL);
-  g_object_set(queue, "max-size-buffers", 2, NULL);
+  g_object_set(queue, "max-size-buffers", 6, NULL);
+  g_object_set(queue, "max-size-time", (guint64)80 * 1000 * 1000, NULL);
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
   g_object_set(packetizer, "pt", 96, NULL);
-  g_object_set(packetizer, "mtu", 800, NULL);
+  g_object_set(packetizer, "mtu", 1200, NULL);
   g_object_set(sink, "sync", FALSE, NULL);
 
   if (std::string("RPI") == PLATFORM) {
@@ -138,16 +138,18 @@ void Streamer::createProdElements() {
       "progressive");
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
+  /* VIDEO_GOP_FRAMES: set in vars.cmake (e.g. 30 vs 60) for IDR spacing vs
+   * loss recovery tradeoff. */
   char extra_buf[384];
   std::snprintf(extra_buf, sizeof(extra_buf),
-                "controls,video_gop_size=60,"
+                "controls,video_gop_size=%d,"
                 "repeat_sequence_header=1,"
                 "video_bitrate_mode=1,"
                 "video_bitrate=%d,"
-                "h264_i_frame_period=60,"
+                "h264_i_frame_period=%d,"
                 "h264_profile=1,"
                 "h264_level=11",
-                VIDEO_BITRATE);
+                VIDEO_GOP_FRAMES, VIDEO_BITRATE, VIDEO_GOP_FRAMES);
   GstStructure *extra_controls = gst_structure_from_string(extra_buf, NULL);
   if (!extra_controls) {
     g_printerr("Failed to parse v4l2h264enc extra-controls string.\n");
