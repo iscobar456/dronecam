@@ -134,11 +134,11 @@ void Streamer::createProdElements() {
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
   GstStructure *extra_controls =
-      gst_structure_from_string("controls,video_gop_size=60,"
+      gst_structure_from_string("controls,video_gop_size=30,"
                                 "repeat_sequence_header=1,"
                                 "video_bitrate_mode=1,"
-                                "video_bitrate=600000,"
-                                "h264_i_frame_period=60,"
+                                "video_bitrate=800000,"
+                                "h264_i_frame_period=30,"
                                 "h264_profile=1,"
                                 "h264_level=11",
                                 NULL);
