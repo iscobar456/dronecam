@@ -91,7 +91,7 @@ bool Streamer::constructPipeline() {
   packetizer = gst_element_factory_make("rtph264pay", "packetizer");
   sink = (GstAppSink *)gst_element_factory_make("appsink", "sink");
 
-  g_object_set(parser, "config-interval", 1, NULL);
+  g_object_set(parser, "config-interval", -1, NULL);
   g_object_set(queue, "max-size-buffers", 2, NULL);
   g_object_set(queue, "leaky", 2, NULL);
   g_object_set(packetizer, "ssrc", ssrc, NULL);
