@@ -132,17 +132,13 @@ void Streamer::createProdElements() {
     return;
   }
 
-  // char src_caps_buff[128];
-  // std::snprintf(src_caps_buff, sizeof(src_caps_buff),
-  //               "video/x-raw,format=NV12,framerate=30/"
-  //               "1,width=%d,height=%d,colorimetry=bt709,interlace-mode=(string)"
-  //               "progressive",
-  //               FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
-  // GstCaps *src_caps = gst_caps_from_string(src_caps_buff);
-  GstCaps *src_caps = gst_caps_from_string(
-      "video/x-raw,format=NV12,framerate=30/"
-      "1,width=1280,height=720,colorimetry=bt709,interlace-mode="
-      "(string)progressive");
+  char src_caps_buff[128];
+  std::snprintf(src_caps_buff, sizeof(src_caps_buff),
+                "video/x-raw,format=NV12,framerate=30/"
+                "1,width=%d,height=%d,colorimetry=bt709,interlace-mode=(string)"
+                "progressive",
+                FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
+  GstCaps *src_caps = gst_caps_from_string(src_caps_buff);
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
   char extra_buf[384];
