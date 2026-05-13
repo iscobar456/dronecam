@@ -10,3 +10,5 @@ set(RTP_PACING_BITRATE_MULT 135)
 set(RTP_PACING_INTERVAL_MS 5)
 # v4l2h264enc GOP / I-frame period in frames (e.g. 30 at 30fps ~= 1s IDR; 60 ~= 2s)
 set(VIDEO_GOP_FRAMES 30)
+# libdatachannel RtcpNackResponder: max RTP packets cached for RTCP NACK retransmit
+set(NACK_CACHE_PACKETS 512)

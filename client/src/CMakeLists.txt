@@ -18,6 +18,7 @@ target_compile_definitions(dronecam PRIVATE VIDEO_BITRATE=${VIDEO_BITRATE})
 target_compile_definitions(dronecam PRIVATE RTP_PACING_BITRATE_MULT=${RTP_PACING_BITRATE_MULT})
 target_compile_definitions(dronecam PRIVATE RTP_PACING_INTERVAL_MS=${RTP_PACING_INTERVAL_MS})
 target_compile_definitions(dronecam PRIVATE VIDEO_GOP_FRAMES=${VIDEO_GOP_FRAMES})
+target_compile_definitions(dronecam PRIVATE NACK_CACHE_PACKETS=${NACK_CACHE_PACKETS})
 
 target_include_directories(dronecam PRIVATE
     ../external/libdatachannel/deps/json/single_include

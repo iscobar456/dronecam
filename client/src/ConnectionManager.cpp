@@ -154,6 +154,14 @@ void ConnectionManager::configureTrack(uint32_t ssrc) {
   rtcSetClosedCallback(tr, &trackClosedCallback);
   rtcSetErrorCallback(tr, &trackErrorCallback);
 
+  /* RtcpNackResponder must chain BEFORE PacingHandler: pacing queues RTP in
+   * outgoing() and does not forward the batch to next, so NACK cache would
+   * never see packets if pacing were first. See libdatachannel plan. */
+  int nackErr = rtcChainRtcpNackResponder(tr, NACK_CACHE_PACKETS);
+  if (nackErr < 0) {
+    std::cerr << "rtcChainRtcpNackResponder failed (code " << nackErr << ")\n";
+  }
+
   /* Pace RTP (see RTP_PACING_* in vars.cmake). pacedBps =
    * VIDEO_BITRATE * (RTP_PACING_BITRATE_MULT/100). Tune via webrtc-internals:
    * freezeCount, nackCount, jitterBufferDelay. */
