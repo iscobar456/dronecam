@@ -3,7 +3,7 @@
 set(WEBSOCKET_URL "wss://dcsignaling.isaacspencer.com")
 set(PLATFORM "RPI")
 set(V4L2_DEV "/dev/video0")
-set(VIDEO_BITRATE 2500000)
+set(VIDEO_BITRATE 1500000)
 set(VIDEO_GOP_FRAMES 30)
 set(NACK_CACHE_PACKETS 512)
 set(FOOTAGE_WIDTH 1280)
