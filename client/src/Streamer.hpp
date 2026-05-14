@@ -12,11 +12,12 @@
 
 class Streamer {
 private:
-  GstElement *pipeline, *source, *source_cap_filter, *converter, *encoder,
-      *encoder_cap_filter, *parser, *queue, *packetizer;
-  GstAppSink *sink;
-  GstBus *bus;
-  GstMessage *msg;
+  GstElement *pipeline = nullptr, *source = nullptr, *source_cap_filter = nullptr,
+      *converter = nullptr, *encoder = nullptr, *encoder_cap_filter = nullptr,
+      *parser = nullptr, *queue = nullptr, *packetizer = nullptr;
+  GstAppSink *sink = nullptr;
+  GstBus *bus = nullptr;
+  GstMessage *msg = nullptr;
   GstStateChangeReturn ret;
 
   ConnectionManager connMan;
@@ -32,6 +33,7 @@ private:
   void captureData();
 
 public:
+  Streamer();
   void startStream();
   void stopStream();
 };

@@ -14,22 +14,20 @@
 #include <gst/gstsample.h>
 #include <gst/gststructure.h>
 #include <gst/gstutils.h>
+#include <iostream>
 #include <thread>
 
-void Streamer::startStream() {
+Streamer::Streamer() {
   gst_init(0, nullptr);
-
   ssrc = static_cast<uint32_t>(std::rand());
+  connMan.setSsrc(ssrc);
+}
 
-  connMan.init();
-  connMan.configureTrack(ssrc);
+void Streamer::startStream() {
 
-  if (!constructPipeline()) {
-    return;
-  }
-  if (!startPipeline()) {
-    return;
-  }
+  pipeline = gst_pipeline_new("dronecam");
+  constructPipeline();
+  startPipeline();
 
   captureThreadRunning = true;
   captureThread = std::thread(&Streamer::captureData, this);
@@ -80,7 +78,6 @@ void Streamer::stopStream() {
 }
 
 bool Streamer::constructPipeline() {
-  pipeline = gst_pipeline_new("dronecam");
   if (std::string("RPI") == PLATFORM) {
     createProdElements();
   } else {
@@ -104,6 +101,7 @@ bool Streamer::constructPipeline() {
   g_object_set(packetizer, "mtu", 1200, NULL);
   g_object_set(sink, "sync", FALSE, NULL);
 
+  std::cout << "Linking pipeline elements..." << std::endl;
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
                      encoder_cap_filter, parser, queue, packetizer, sink, NULL);
@@ -163,9 +161,11 @@ void Streamer::createProdElements() {
 }
 
 void Streamer::createDevElements() {
+  std::cout << "Creating dev pipeline elements..." << std::endl;
   source = gst_element_factory_make("v4l2src", "source");
   converter = gst_element_factory_make("videoconvert", "converter");
   encoder = gst_element_factory_make("x264enc", "encoder");
+  std::cout << "Created dev pipeline elements." << std::endl;
 
   if (!source || !converter || !encoder) {
     g_printerr(
@@ -213,8 +213,8 @@ bool Streamer::startPipeline() {
 
 void Streamer::captureData() {
   GstSample *sample;
-  while (captureThreadRunning && !gst_app_sink_is_eos((GstAppSink *)sink)) {
-    sample = gst_app_sink_try_pull_sample((GstAppSink *)sink, 10000000);
+  while (captureThreadRunning && sink && !gst_app_sink_is_eos(sink)) {
+    sample = gst_app_sink_try_pull_sample(sink, 10000000);
 
     if (sample == nullptr) {
       continue;

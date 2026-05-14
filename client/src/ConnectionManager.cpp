@@ -2,9 +2,7 @@
 #include "rtc/rtc.h"
 #include "utils.hpp"
 #include <cstddef>
-#include <cstdint>
 #include <cstdlib>
-#include <exception>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
@@ -43,6 +41,8 @@ void messageCallback(int id, const char *message, int size, void *connMan) {
   json data;
   if (message[0] != '\0') {
     data = json::parse(message);
+  } else {
+    return;
   }
 
   std::string mType;
@@ -56,20 +56,16 @@ void messageCallback(int id, const char *message, int size, void *connMan) {
     std::string sdp;
     offer.at("sdp").get_to(sdp);
 
-    int remoteCode =
+    int remoteSdpCode =
         rtcSetRemoteDescription(cm->getPc(), sdp.c_str(), "answer");
+    if (remoteSdpCode >= 0) {
+      cm->hasRemoteSdp = true;
+    }
 
     std::string remoteSdp;
-    remoteSdp.resize(12288);
-
-    int getRemoteCode =
-        rtcGetRemoteDescription(cm->getPc(), remoteSdp.data(), 12288);
-    if (getRemoteCode > 0) {
-      remoteSdp.resize(static_cast<size_t>(getRemoteCode) - 1);
-    }
-    std::cout << "get observer sdp returned code: " << getRemoteCode
-              << std::endl;
-    std::cout << remoteSdp << std::endl;
+    remoteSdp.resize(4096);
+    rtcGetRemoteDescription(cm->getPc(), remoteSdp.data(),
+                            4096); // not resizing back. don't need to
 
     for (auto cand : cm->remoteIceCandidates) {
       rtcAddRemoteCandidate(cm->getPc(), cand, NULL);
@@ -91,8 +87,9 @@ void messageCallback(int id, const char *message, int size, void *connMan) {
     std::string peerId;
     data.at("body").at("from").get_to(peerId);
     cm->setPeerId(peerId);
-    cm->createSdp();
-    cm->sendSdp();
+    cm->makeConnection();
+  } else if (mType == "disconnect") {
+    cm->closeConnection();
   }
 };
 
@@ -108,14 +105,25 @@ void trackErrorCallback(int id, const char *error, void *user_ptr) {
 
 // CONNECTION MANAGER IMPLEMENTATIONS
 
-ConnectionManager::ConnectionManager() : wsm(WebSocketManager(this)) {}
-
-bool ConnectionManager::init() {
-  rtcInitLogger(RTC_LOG_DEBUG, NULL);
-
+ConnectionManager::ConnectionManager() : wsm(WebSocketManager(this)) {
   wsm.startWebSocket();
+  rtcInitLogger(RTC_LOG_DEBUG, NULL);
+}
 
-  // Initialize peer connection
+void ConnectionManager::makeConnection() {
+  createRtcPC();
+  createTrack(); // requires ssrc to have been set
+  createSdp();
+  sendSdp();
+}
+
+void ConnectionManager::closeConnection() {
+  rtcCleanup();
+  setPeerId("");
+  hasRemoteSdp = false;
+}
+
+void ConnectionManager::createRtcPC() {
   rtcConfiguration config{};
   const char *iceServers[] = {"stun:stun.barracuda.com:3478",
                               "stun:stun.actionvoip.com:3478"};
@@ -128,11 +136,9 @@ bool ConnectionManager::init() {
 
   rtcSetUserPointer(pc, this);
   rtcSetLocalCandidateCallback(pc, newCandidateCallback);
+}
 
-  return true;
-};
-
-void ConnectionManager::configureTrack(uint32_t ssrc) {
+void ConnectionManager::createTrack() {
   std::string cname = generate_uuid();
   /* fmtp must match rtph264pay (FU-A / packetization-mode=1). See
    * libdatachannel Description::Video — profile string becomes a=fmtp:<pt>
@@ -158,14 +164,14 @@ void ConnectionManager::configureTrack(uint32_t ssrc) {
 
   const double pacedBps = static_cast<double>(VIDEO_BITRATE) * 1.25;
   int paceErr =
-      rtcChainPacingHandler(tr, pacedBps, 5); // not super sure about 5ms pacing
+      rtcChainPacingHandler(tr, pacedBps, 5); // not too sure about 5ms pacing
 };
 
 void ConnectionManager::createSdp() { rtcSetLocalDescription(pc, "offer"); }
 void ConnectionManager::sendSdp() { wsm.sendSdp(getSdp().c_str()); }
 
 void ConnectionManager::sendPacket(const char *packet, int size) {
-  if (!rtcIsOpen(tr)) {
+  if (tr == -1 || !rtcIsOpen(tr)) {
     return;
   }
   rtcSendMessage(tr, packet, size);
@@ -190,13 +196,8 @@ void ConnectionManager::setPeerId(std::string peerId) {
 
 const std::string ConnectionManager::getSdp() {
   std::string buffer;
-  buffer.resize(12288);
-  int code = rtcGetLocalDescription(pc, buffer.data(), 12288);
-  if (code <= 0) {
-    return {};
-  }
-  /* copyAndReturn returns (sdp.size() + 1) including trailing '\0' */
-  buffer.resize(static_cast<size_t>(code) - 1);
+  buffer.resize(4096);
+  int code = rtcGetLocalDescription(pc, buffer.data(), 4096);
   return buffer;
 }
 
@@ -229,15 +230,10 @@ void ConnectionManager::WebSocketManager::sendSdp(const char *sdp) {
   body["from"] = id;
   body["data"] = sdp;
   message["body"] = body;
-  try {
-    std::string message_str =
-        message.dump(-1, ' ', false, json::error_handler_t::replace);
-    std::cout << "sending sdp message: " << message_str << std::endl;
-    rtcSendMessage(ws, message_str.c_str(), message_str.size());
-  } catch (const std::exception &e) {
-    // This is where the "silence" ends
-    std::cerr << "CRITICAL ERROR: " << e.what() << std::endl;
-  }
+  std::string message_str =
+      message.dump(-1, ' ', false, json::error_handler_t::replace);
+  std::cout << "sending sdp message: " << message_str << std::endl;
+  rtcSendMessage(ws, message_str.c_str(), message_str.size());
 };
 
 void ConnectionManager::WebSocketManager::sendCand(const char *cand) {

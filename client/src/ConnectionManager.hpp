@@ -7,10 +7,14 @@ class ConnectionManager {
   bool isConnected = false;
   void setRemoteDescription();
 
-  void initializeTrack();
+  void createRtcPC();
+  void createSdp();
+  void sendSdp();
+  void createTrack();
   void onGatheringComplete();
   int pc{-1};
   int tr = -1;
+  uint32_t ssrc;
   std::vector<const char *> iceCandidates;
   const std::string getSdp();
 
@@ -37,13 +41,12 @@ public:
   ConnectionManager();
   ConnectionManager(const ConnectionManager &) = delete;
   ConnectionManager &operator=(const ConnectionManager &) = delete;
+  void makeConnection();
+  void closeConnection();
   void sendPacket(const char *packet, int size);
-  void createSdp();
-  void sendSdp();
-  bool init();
-  void configureTrack(uint32_t ssrc);
   void addCandidate(const char *cand);
   void setPeerId(std::string peerId);
+  void setSsrc(uint32_t ssrc) { this->ssrc = ssrc; };
   int getPc() const { return pc; }
   bool hasRemoteSdp = false;
   std::vector<const char *> remoteIceCandidates;
