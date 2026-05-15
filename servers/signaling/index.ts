@@ -1,16 +1,19 @@
 import WebSocket, { WebSocketServer } from 'ws';
-import type { Message, MessageBody, Node } from './messageTypes.d.ts';
+import type { Message, MessageBody } from './messageTypes.d.ts';
 import type { Config } from 'unique-names-generator';
 import { uniqueNamesGenerator, languages } from 'unique-names-generator';
 import type { IncomingMessage } from 'node:http';
 
-type Connection = {
-    type: "unknown" | "observer" | "drone",
+export interface Node extends WebSocket {
+    clientType: string,
     name: string,
-    socket: WebSocket,
+    id: string,
 }
 
-const connections: Map<string, Connection> = new Map();
+type Connection = [Node, Node];
+
+const nodes: Node[] = new Array();
+const connections: Connection[] = new Array();
 
 function main() {
     const wss = new WebSocketServer({ port: 8080 });
@@ -18,86 +21,127 @@ function main() {
         dictionaries: [languages]
     }
 
-    wss.on('connection', function connection(ws: WebSocket, req: IncomingMessage) {
+    wss.on('connection', function connection(node: Node, req: IncomingMessage) {
         const url = new URL(req.url || "", "http://localhost");
-        const clientId = url.searchParams.get("id");
-        const clientType = url.searchParams.get("type");
-        if (!clientId || (clientType != "drone" && clientType != "observer")) {
-            console.log("No ID or Invalid type")
+        const nodeId = url.searchParams.get("id");
+        const nodeType = url.searchParams.get("type");
+        if (!nodeId || !nodeType) {
+            node.send("id and type params required");
             return;
-        }
-        const conn: Connection = {
-            type: clientType,
-            name: uniqueNamesGenerator(config),
-            socket: ws,
-        }
-        console.log(`Set id ${clientId} to type ${clientType}`)
-        connections.set(clientId, conn);
+        };
+        node.id = nodeId;
+        node.name = uniqueNamesGenerator(config);
+        node.clientType = nodeType;
+        nodes.push(node);
 
-        ws.on('error', console.error);
-        ws.on('message', messageHandler);
-        ws.on('close', () => {
+        console.log(`Set id ${nodeId} to type ${nodeType}`)
 
+        node.on('error', console.error);
+        node.on('message', (data: Buffer) => { messageHandler(node, data) });
+        node.on('close', () => {
+            closeConnection(getConnection(node), node);
+            nodes.splice(nodes.indexOf(node), 1);
         })
     });
 
-    const messageHandler = (data: Buffer) => {
+    const closeConnection = (conn: Connection | null, from?: Node) => {
+        if (!conn) return;
+
+        conn.forEach(node => {
+            // skip sending disconnect message if is source node
+            if (from && node.id == from.id) return;
+            sendMessage(node, {
+                type: 'disconnect',
+                body: {
+                    from: from ? from.id : '',
+                    to: node.id,
+                    data: "",
+                }
+            })
+        })
+
+        connections.splice(connections.indexOf(conn), 1);
+    }
+
+    const messageHandler = (node: Node, data: Buffer) => {
         let dataString = data.toString()
         const message: Message = JSON.parse(dataString);
         let messageBody = message.body as MessageBody;
-        let response;
-        let conn;
+        let dest;
         switch (message.type) {
-            case 'sd':
-            case 'ice':
-                conn = connections.get(messageBody.to);
-                console.log(`Forwarding ${message.type} to ${messageBody.to}`);
-                conn?.socket.send(JSON.stringify(message));
-                break;
-
             case 'list':
-                conn = connections.get(messageBody.from);
-                if (conn == null) {
-                    return;
-                }
-                const droneList = getDroneList();
-                response = {
+                sendMessage(node, {
                     type: 'list',
-                    body: JSON.stringify(droneList)
-                }
-                sendMessage(conn.socket, JSON.stringify(response));
+                    body: {
+                        from: node.id,
+                        to: node.id,
+                        data: JSON.stringify(getDroneList())
+                    }
+                })
                 break;
 
             case 'select':
-                conn = connections.get(messageBody.to);
                 console.log(`Observer selecting ${messageBody.to}: ${JSON.stringify(message)}`);
-                conn?.socket.send(JSON.stringify(message));
+
+                dest = getNodeFromId(messageBody.to);
+                if (!dest) {
+                    console.warn("Attempted to select a non-extant peer");
+                    return;
+                };
+                connections.push([node, dest]);
+                dest.send(JSON.stringify(message));
+
                 break;
 
-            case 'disc': // disconnect
+            case 'disconnect':
+                console.log("received: " + dataString)
+                console.log("closing connection");
+                const conn = getConnection(node);
+                closeConnection(conn, node);
+                break;
 
+            case 'sd':
+            case 'ice':
+                console.log(`Forwarding ${message.type} to ${messageBody.to}`);
+
+                dest = getNodeFromId(messageBody.to);
+                dest?.send(JSON.stringify(message));
+                break;
         }
     }
 
     const getDroneList = () => {
-        let droneList: Array<Node> = [];
-        connections.forEach((connection, id) => {
-            if (connection.type === "drone") {
-                droneList.push({ id: id, name: connection.name })
-            }
-        })
-        return droneList;
+        return nodes.filter(
+            node => node.clientType == "drone"
+        ).map(
+            node => { return { id: node.id, name: node.name } }
+        );
     }
 }
 
 main();
 
-function sendMessage(ws: WebSocket, message: string) {
-    let wsId;
-    connections.forEach((conn, id) => {
-        if (conn.socket === ws) {
-            wsId = id;
+function sendMessage(node: Node, message: Message) {
+    console.log(JSON.stringify(message));
+    node.send(JSON.stringify(message));
+}
+
+const getConnection = (node: Node): Connection | null => {
+    const c = connections.filter(c => c[0].id == node.id || c[1].id == node.id).at(0);
+    if (!c) {
+        console.warn("Could not find connection for node " + node.id);
+    }
+    return c || null;
+}
+
+
+// this one could probably be gotten rid of by closing over
+const getNodeFromId = (id: string): Node | undefined => {
+    let n;
+    nodes.forEach((node) => {
+        if (node.id == id) {
+            n = node
         }
     })
-    ws.send(message);
+    return n;
 }

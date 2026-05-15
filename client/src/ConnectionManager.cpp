@@ -89,6 +89,7 @@ void messageCallback(int id, const char *message, int size, void *connMan) {
     cm->setPeerId(peerId);
     cm->makeConnection();
   } else if (mType == "disconnect") {
+
     cm->closeConnection();
   }
 };
@@ -118,7 +119,10 @@ void ConnectionManager::makeConnection() {
 }
 
 void ConnectionManager::closeConnection() {
-  rtcCleanup();
+  rtcDelete(tr);
+  rtcDeletePeerConnection(pc);
+  tr = -1;
+  pc = -1;
   setPeerId("");
   hasRemoteSdp = false;
 }

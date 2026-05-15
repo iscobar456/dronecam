@@ -109,10 +109,9 @@ bool Streamer::constructPipeline() {
                           encoder_cap_filter, parser, queue, packetizer, sink,
                           NULL);
   } else {
-    gst_bin_add_many(GST_BIN(pipeline), source, converter, encoder, parser,
-                     queue, packetizer, sink, NULL);
-    gst_element_link_many(source, converter, encoder, parser, queue, packetizer,
-                          sink, NULL);
+    gst_bin_add_many(GST_BIN(pipeline), source, parser, queue, packetizer, sink,
+                     NULL);
+    gst_element_link_many(source, parser, queue, packetizer, sink, NULL);
   }
   return true;
 }
@@ -163,16 +162,21 @@ void Streamer::createProdElements() {
 void Streamer::createDevElements() {
   std::cout << "Creating dev pipeline elements..." << std::endl;
   source = gst_element_factory_make("v4l2src", "source");
-  converter = gst_element_factory_make("videoconvert", "converter");
-  encoder = gst_element_factory_make("x264enc", "encoder");
   std::cout << "Created dev pipeline elements." << std::endl;
 
-  if (!source || !converter || !encoder) {
+  if (!source) {
     g_printerr(
         "Not all development specific pipeline elements could be created.\n");
     return;
   }
 
+  char src_caps_buff[128];
+  std::snprintf(src_caps_buff, sizeof(src_caps_buff),
+                "video/x-raw,format=H264,framerate=30/"
+                "1,width=%d,height=%d",
+                FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
+  GstCaps *src_caps = gst_caps_from_string(src_caps_buff);
+  g_object_set(source_cap_filter, "caps", src_caps, NULL);
   g_object_set(source, "device", V4L2_DEV, NULL); // Defined as a cmake var
 }
 
@@ -213,7 +217,7 @@ bool Streamer::startPipeline() {
 
 void Streamer::captureData() {
   GstSample *sample;
-  while (captureThreadRunning && sink && !gst_app_sink_is_eos(sink)) {
+  while (captureThreadRunning && !gst_app_sink_is_eos(sink)) {
     sample = gst_app_sink_try_pull_sample(sink, 10000000);
 
     if (sample == nullptr) {

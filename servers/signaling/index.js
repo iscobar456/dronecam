@@ -1,82 +1,116 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import { uniqueNamesGenerator, languages } from 'unique-names-generator';
-const connections = new Map();
+const nodes = new Array();
+const connections = new Array();
 function main() {
     const wss = new WebSocketServer({ port: 8080 });
     const config = {
         dictionaries: [languages]
     };
-    wss.on('connection', function connection(ws, req) {
+    wss.on('connection', function connection(node, req) {
         const url = new URL(req.url || "", "http://localhost");
-        const clientId = url.searchParams.get("id");
-        const clientType = url.searchParams.get("type");
-        if (!clientId || (clientType != "drone" && clientType != "observer")) {
-            console.log("No ID or Invalid type");
+        const nodeId = url.searchParams.get("id");
+        const nodeType = url.searchParams.get("type");
+        if (!nodeId || !nodeType) {
+            node.send("id and type params required");
             return;
         }
-        const conn = {
-            type: clientType,
-            name: uniqueNamesGenerator(config),
-            socket: ws,
-        };
-        console.log(`Set id ${clientId} to type ${clientType}`);
-        connections.set(clientId, conn);
-        ws.on('error', console.error);
-        ws.on('message', messageHandler);
-        ws.on('close', () => {
+        ;
+        node.id = nodeId;
+        node.name = uniqueNamesGenerator(config);
+        node.clientType = nodeType;
+        nodes.push(node);
+        console.log(`Set id ${nodeId} to type ${nodeType}`);
+        node.on('error', console.error);
+        node.on('message', (data) => { messageHandler(node, data); });
+        node.on('close', () => {
+            closeConnection(getConnection(node), node);
+            nodes.splice(nodes.indexOf(node), 1);
         });
     });
-    const messageHandler = (data) => {
+    const closeConnection = (conn, from) => {
+        if (!conn)
+            return;
+        conn.forEach(node => {
+            // skip sending disconnect message if is source node
+            if (from && node.id == from.id)
+                return;
+            sendMessage(node, {
+                type: 'disconnect',
+                body: {
+                    from: from ? from.id : '',
+                    to: node.id,
+                    data: "",
+                }
+            });
+        });
+        connections.splice(connections.indexOf(conn), 1);
+    };
+    const messageHandler = (node, data) => {
         let dataString = data.toString();
         const message = JSON.parse(dataString);
         let messageBody = message.body;
-        let response;
-        let conn;
+        let dest;
         switch (message.type) {
-            case 'sd':
-            case 'ice':
-                conn = connections.get(messageBody.to);
-                console.log(`Forwarding ${message.type} to ${messageBody.to}`);
-                conn?.socket.send(JSON.stringify(message));
-                break;
             case 'list':
-                conn = connections.get(messageBody.from);
-                if (conn == null) {
-                    return;
-                }
-                const droneList = getDroneList();
-                response = {
+                sendMessage(node, {
                     type: 'list',
-                    body: JSON.stringify(droneList)
-                };
-                sendMessage(conn.socket, JSON.stringify(response));
+                    body: {
+                        from: node.id,
+                        to: node.id,
+                        data: JSON.stringify(getDroneList())
+                    }
+                });
                 break;
             case 'select':
-                conn = connections.get(messageBody.to);
                 console.log(`Observer selecting ${messageBody.to}: ${JSON.stringify(message)}`);
-                conn?.socket.send(JSON.stringify(message));
+                dest = getNodeFromId(messageBody.to);
+                if (!dest) {
+                    console.warn("Attempted to select a non-extant peer");
+                    return;
+                }
+                ;
+                connections.push([node, dest]);
+                dest.send(JSON.stringify(message));
                 break;
-            case 'disc': // disconnect
+            case 'disconnect':
+                console.log("received: " + dataString);
+                console.log("closing connection");
+                const conn = getConnection(node);
+                closeConnection(conn, node);
+                break;
+            case 'sd':
+            case 'ice':
+                console.log(`Forwarding ${message.type} to ${messageBody.to}`);
+                dest = getNodeFromId(messageBody.to);
+                dest?.send(JSON.stringify(message));
+                break;
         }
     };
     const getDroneList = () => {
-        let droneList = [];
-        connections.forEach((connection, id) => {
-            if (connection.type === "drone") {
-                droneList.push({ id: id, name: connection.name });
-            }
-        });
-        return droneList;
+        return nodes.filter(node => node.clientType == "drone").map(node => { return { id: node.id, name: node.name }; });
     };
 }
 main();
-function sendMessage(ws, message) {
-    let wsId;
-    connections.forEach((conn, id) => {
-        if (conn.socket === ws) {
-            wsId = id;
+function sendMessage(node, message) {
+    console.log(JSON.stringify(message));
+    node.send(JSON.stringify(message));
+}
+const getConnection = (node) => {
+    const c = connections.filter(c => c[0].id == node.id || c[1].id == node.id).at(0);
+    if (!c) {
+        console.warn("Could not find connection for node " + node.id);
+    }
+    return c || null;
+};
+// this one could probably be gotten rid of by closing over
+const getNodeFromId = (id) => {
+    let n;
+    nodes.forEach((node) => {
+        if (node.id == id) {
+            n = node;
         }
     });
-    ws.send(message);
-}
+    return n;
+};
 //# sourceMappingURL=index.js.map
