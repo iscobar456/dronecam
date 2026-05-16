@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import DroneImage from '$lib/assets/mq9-reaper.jpg';
 	import { PUBLIC_ENVIRONMENT } from '$env/static/public';
+	import Portal from './Portal.svelte';
 
 	const WEBSOCKET_URL =
 		PUBLIC_ENVIRONMENT == 'dev' ? 'ws://localhost:8080' : 'wss://dcsignaling.isaacspencer.com/';
@@ -15,6 +16,7 @@
 	let ws: WebSocket;
 	let pc: RTCPeerConnection;
 	let isConnected: boolean = $state(false);
+	let stream: MediaStream | null = $state(null);
 	let peerId = $state('');
 	let iceQueue: Array<RTCIceCandidate> = $state([]);
 	let remoteIceQueue: Array<RTCIceCandidate> = $state([]);
@@ -43,19 +45,22 @@
 
 		pc = new RTCPeerConnection(config);
 		pc.onicecandidate = handleIceCandidate;
-		pc.oniceconnectionstatechange = () => {
-			console.log('ICE connection state: ' + pc.iceConnectionState);
-		};
 		pc.onconnectionstatechange = () => {
 			console.log('Connection state: ' + pc.connectionState);
-			isConnected = pc.connectionState == 'connected';
+			switch (pc.connectionState) {
+				case 'connecting':
+				case 'connected':
+					isConnected = true;
+					break;
+				default:
+					isConnected = false;
+					stream = null;
+					break;
+			}
 		};
 		pc.ontrack = (ev: RTCTrackEvent) => {
 			console.log('got track');
-			const el = document.querySelector('#remoteVideo') as HTMLVideoElement | null;
-			if (el && ev.streams[0]) {
-				el.srcObject = ev.streams[0];
-			}
+			stream = ev.streams[0] || null;
 		};
 		pc.addTransceiver('video', { direction: 'recvonly' });
 	}
@@ -128,6 +133,8 @@
 		}
 		pc.close();
 		initializeRtcPc();
+		isConnected = false;
+		stream = null;
 	};
 
 	const handleIceMessage = (cand: string) => {
@@ -214,22 +221,7 @@
 	</ol>
 	<div>
 		<p>{peerId}</p>
-		<video id="remoteVideo" class="mt-4 max-h-64 w-full bg-black" autoplay playsinline muted>
-		</video>
 	</div>
 </div>
-<hr />
 
-remote ice queue
-<ol>
-	{#each remoteIceQueue as cand}
-		<li>{JSON.stringify(cand)}</li>
-	{/each}
-</ol>
-
-local ice queue
-<ol>
-	{#each iceQueue as cand}
-		<li>{JSON.stringify(cand)}</li>
-	{/each}
-</ol>
+<Portal {stream} {disconnect} />
