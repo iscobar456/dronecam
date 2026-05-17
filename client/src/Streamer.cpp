@@ -138,11 +138,11 @@ void Streamer::createProdElements() {
       "progressive",
       FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
   GstCaps *src_caps = gst_caps_from_string(src_caps_str.c_str());
-  GstCaps *encoder_caps = gst_caps_from_string(
-      "video/x-h264,profile=constrained-baseline,level=(string)3.1");
+  GstCaps *encoder_caps =
+      gst_caps_from_string("video/x-h264,profile=main,level=(string)3.1");
   std::string caps_string = fmt::format(
       "controls,video_gop_size={},repeat_sequence_header=1,video_bitrate_mode="
-      "1,video_bitrate={},h264_i_frame_period={},h264_profile=1,h264_level=11",
+      "1,video_bitrate={},h264_i_frame_period={},h264_profile=2,h264_level=9",
       VIDEO_GOP_FRAMES, VIDEO_BITRATE, VIDEO_GOP_FRAMES);
   GstStructure *extra_controls =
       gst_structure_from_string(caps_string.c_str(), NULL);
