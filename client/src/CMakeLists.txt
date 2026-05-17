@@ -11,6 +11,10 @@ target_link_libraries(dronecam PUBLIC datachannel-static)
 target_link_libraries(dronecam PUBLIC PkgConfig::GST)
 target_link_libraries(dronecam PRIVATE PkgConfig::UUID)
 
+target_include_directories(dronecam PRIVATE
+    ../external/libdatachannel/deps/json/single_include
+)
+
 target_compile_definitions(dronecam PRIVATE WEBSOCKET_URL="${WEBSOCKET_URL}")
 target_compile_definitions(dronecam PRIVATE V4L2_DEV="${V4L2_DEV}")
 target_compile_definitions(dronecam PRIVATE PLATFORM="${PLATFORM}")
@@ -25,8 +29,4 @@ target_compile_definitions(
     dronecam PRIVATE NACK_CACHE_PACKETS=${NACK_CACHE_PACKETS})
 target_compile_definitions(dronecam PRIVATE FOOTAGE_WIDTH=${FOOTAGE_WIDTH})
 target_compile_definitions(dronecam PRIVATE FOOTAGE_HEIGHT=${FOOTAGE_HEIGHT})
-
-target_include_directories(dronecam PRIVATE
-    ../external/libdatachannel/deps/json/single_include
-)
-
+target_compile_definitions(dronecam PRIVATE DEVICE_NAME="${DEVICE_NAME}")

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <format>
 #include <glib-object.h>
 #include <glib.h>
 #include <gst/gst.h>
@@ -101,7 +102,7 @@ bool Streamer::constructPipeline() {
   g_object_set(packetizer, "mtu", 1200, NULL);
   g_object_set(sink, "sync", FALSE, NULL);
 
-  std::cout << "Linking pipeline elements..." << std::endl;
+  std::cout << "Linking pipeline elements... ";
   if (std::string("RPI") == PLATFORM) {
     gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, encoder,
                      encoder_cap_filter, parser, queue, packetizer, sink, NULL);
@@ -109,10 +110,12 @@ bool Streamer::constructPipeline() {
                           encoder_cap_filter, parser, queue, packetizer, sink,
                           NULL);
   } else {
-    gst_bin_add_many(GST_BIN(pipeline), source, parser, queue, packetizer, sink,
-                     NULL);
-    gst_element_link_many(source, parser, queue, packetizer, sink, NULL);
+    gst_bin_add_many(GST_BIN(pipeline), source, source_cap_filter, parser,
+                     queue, packetizer, sink, NULL);
+    gst_element_link_many(source, source_cap_filter, parser, queue, packetizer,
+                          sink, NULL);
   }
+  std::cout << "done." << std::endl;
   return true;
 }
 
@@ -129,26 +132,20 @@ void Streamer::createProdElements() {
     return;
   }
 
-  char src_caps_buff[128];
-  std::snprintf(src_caps_buff, sizeof(src_caps_buff),
-                "video/x-raw,format=NV12,framerate=30/"
-                "1,width=%d,height=%d,colorimetry=bt709,interlace-mode=(string)"
-                "progressive",
-                FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
-  GstCaps *src_caps = gst_caps_from_string(src_caps_buff);
+  std::string src_caps_str = std::format(
+      "video/x-raw,format=NV12,framerate=30/"
+      "1,width=%d,height=%d,colorimetry=bt709,interlace-mode=(string)"
+      "progressive",
+      FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
+  GstCaps *src_caps = gst_caps_from_string(src_caps_str.c_str());
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
-  char extra_buf[384];
-  std::snprintf(extra_buf, sizeof(extra_buf),
-                "controls,video_gop_size=%d,"
-                "repeat_sequence_header=1,"
-                "video_bitrate_mode=1,"
-                "video_bitrate=%d,"
-                "h264_i_frame_period=%d,"
-                "h264_profile=1,"
-                "h264_level=11",
-                VIDEO_GOP_FRAMES, VIDEO_BITRATE, VIDEO_GOP_FRAMES);
-  GstStructure *extra_controls = gst_structure_from_string(extra_buf, NULL);
+  std::string caps_string = std::format(
+      "controls,video_gop_size={},repeat_sequence_header=1,video_bitrate_mode="
+      "1,video_bitrate={},h264_i_frame_period={},h264_profile=1,h264_level=11",
+      VIDEO_GOP_FRAMES, VIDEO_BITRATE, VIDEO_GOP_FRAMES);
+  GstStructure *extra_controls =
+      gst_structure_from_string(caps_string.c_str(), NULL);
   if (!extra_controls) {
     g_printerr("Failed to parse v4l2h264enc extra-controls string.\n");
     return;
@@ -160,24 +157,24 @@ void Streamer::createProdElements() {
 }
 
 void Streamer::createDevElements() {
-  std::cout << "Creating dev pipeline elements..." << std::endl;
+  std::cout << "Creating dev pipeline elements... ";
   source = gst_element_factory_make("v4l2src", "source");
-  std::cout << "Created dev pipeline elements." << std::endl;
+  source_cap_filter =
+      gst_element_factory_make("capsfilter", "source cap filter");
+  std::string src_caps_str = std::format("video/x-h264,framerate=30/"
+                                         "1,width={},height={}",
+                                         FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
+  GstCaps *src_caps = gst_caps_from_string(src_caps_str.c_str());
+  g_object_set(source_cap_filter, "caps", src_caps, NULL);
+  g_object_set(source, "device", V4L2_DEV, NULL); // Defined as a cmake var
 
-  if (!source) {
+  if (!source || !source_cap_filter) {
     g_printerr(
         "Not all development specific pipeline elements could be created.\n");
     return;
   }
 
-  char src_caps_buff[128];
-  std::snprintf(src_caps_buff, sizeof(src_caps_buff),
-                "video/x-raw,format=H264,framerate=30/"
-                "1,width=%d,height=%d",
-                FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
-  GstCaps *src_caps = gst_caps_from_string(src_caps_buff);
-  g_object_set(source_cap_filter, "caps", src_caps, NULL);
-  g_object_set(source, "device", V4L2_DEV, NULL); // Defined as a cmake var
+  std::cout << "done." << std::endl;
 }
 
 bool Streamer::startPipeline() {

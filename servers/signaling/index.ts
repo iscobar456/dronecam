@@ -1,7 +1,7 @@
 import WebSocket, { WebSocketServer } from 'ws';
 import type { Message, MessageBody } from './messageTypes.d.ts';
 import type { Config } from 'unique-names-generator';
-import { uniqueNamesGenerator, languages } from 'unique-names-generator';
+import { uniqueNamesGenerator, animals } from 'unique-names-generator';
 import type { IncomingMessage } from 'node:http';
 
 export interface Node extends WebSocket {
@@ -17,20 +17,18 @@ const connections: Connection[] = new Array();
 
 function main() {
     const wss = new WebSocketServer({ port: 8080 });
-    const config: Config = {
-        dictionaries: [languages]
-    }
 
     wss.on('connection', function connection(node: Node, req: IncomingMessage) {
         const url = new URL(req.url || "", "http://localhost");
         const nodeId = url.searchParams.get("id");
+        const nodeName = url.searchParams.get("name");
         const nodeType = url.searchParams.get("type");
         if (!nodeId || !nodeType) {
             node.send("id and type params required");
             return;
         };
         node.id = nodeId;
-        node.name = uniqueNamesGenerator(config);
+        node.name = nodeName || uniqueNamesGenerator({ dictionaries: [animals] });
         node.clientType = nodeType;
         nodes.push(node);
 

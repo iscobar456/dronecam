@@ -108,7 +108,7 @@ void trackErrorCallback(int id, const char *error, void *user_ptr) {
 
 ConnectionManager::ConnectionManager() : wsm(WebSocketManager(this)) {
   wsm.startWebSocket();
-  rtcInitLogger(RTC_LOG_DEBUG, NULL);
+  rtcInitLogger(RTC_LOG_INFO, NULL);
 }
 
 void ConnectionManager::makeConnection() {
@@ -216,6 +216,9 @@ ConnectionManager::WebSocketManager::WebSocketManager(
 void ConnectionManager::WebSocketManager::startWebSocket() {
   std::string url = WEBSOCKET_URL;
   url.append("?id=" + id + "&type=drone");
+  if (std::string(DEVICE_NAME) != "UNSET") {
+    url.append(std::string("&name=") + DEVICE_NAME);
+  }
   std::cout << url << std::endl;
 
   ws = rtcCreateWebSocket(url.c_str());

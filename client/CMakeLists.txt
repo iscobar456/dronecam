@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(dronecam)
 
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include("${CMAKE_SOURCE_DIR}/vars.default.cmake")

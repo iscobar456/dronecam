@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { MessageBody, Node } from '$lib/types';
 	import { onMount } from 'svelte';
-	import DroneImage from '$lib/assets/mq9-reaper.jpg';
 	import { PUBLIC_ENVIRONMENT } from '$env/static/public';
 	import Portal from './Portal.svelte';
+	import RestartSvg from '$lib/assets/restart.svg';
+	import EnterSvg from '$lib/assets/enter.svg';
 
 	const WEBSOCKET_URL =
 		PUBLIC_ENVIRONMENT == 'dev' ? 'ws://localhost:8080' : 'wss://dcsignaling.isaacspencer.com/';
@@ -26,7 +27,7 @@
 		initializeRtcPc();
 		ws = new WebSocket(`${WEBSOCKET_URL}?id=${id}&type=observer`);
 		ws.addEventListener('open', () => {
-			// console.log('connection established');
+			refreshList();
 		});
 		ws.addEventListener('close', () => {
 			// console.log('connection closed');
@@ -190,37 +191,33 @@
 	};
 </script>
 
-<h2 class="mb-5 text-center text-2xl">Drones</h2>
-<div class="grid w-full grid-cols-2 px-15">
-	<ol class="grid w-full grid-cols-[200px] flex-col gap-3">
-		<li>
-			<button class="self-end bg-blue-400 px-3 py-2" onclick={refreshList}>
-				Refresh list of drones
+<div class="h-screen w-full flex-col bg-mist-200 px-15 dark:bg-neutral-700">
+	<div class="mx-auto max-w-lg">
+		<div class="flex border-b pb-3">
+			<h1 class="font-bolder mt-15 text-3xl">Drone List</h1>
+			<button
+				class="ml-auto box-content h-7 w-7 cursor-pointer self-end rounded-sm border px-2"
+				onclick={refreshList}
+				aria-label="Refresh drone list"
+			>
+				<img src={RestartSvg} alt="Refresh drone list icon" class="dark:invert" />
 			</button>
-		</li>
-		{#each drones as drone (drone.id)}
-			<li class="w-full gap-3 rounded-sm border">
-				<img src={DroneImage} alt="drone image" />
-				<p>{drone.name}</p>
-				<button
-					class="ml-auto bg-green-300 px-2 py-1"
-					onclick={() => {
-						connectToDrone(drone.id);
-					}}>Connect</button
-				>
-				{#if isConnected}
+		</div>
+		<ol class="flex w-full flex-col gap-3 py-3">
+			{#each drones as drone (drone.id)}
+				<li class="w-full">
 					<button
-						class="ml-auto bg-red-300 px-2 py-1"
 						onclick={() => {
-							disconnect(true);
-						}}>Disconnect</button
+							connectToDrone(drone.id);
+						}}
+						class="flex w-full cursor-pointer items-center p-3 hover:bg-black/5 dark:hover:bg-white/5"
 					>
-				{/if}
-			</li>
-		{/each}
-	</ol>
-	<div>
-		<p>{peerId}</p>
+						<p>{drone.name}</p>
+						<img class="ml-auto h-6 w-6 dark:invert" src={EnterSvg} alt="Connect to drone icon" />
+					</button>
+				</li>
+			{/each}
+		</ol>
 	</div>
 </div>
 
