@@ -134,7 +134,7 @@ void Streamer::createProdElements() {
 
   std::string src_caps_str = fmt::format(
       "video/x-raw,format=NV12,framerate=30/"
-      "1,width=%d,height=%d,colorimetry=bt709,interlace-mode=(string)"
+      "1,width={},height={},colorimetry=bt709,interlace-mode=(string)"
       "progressive",
       FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
   GstCaps *src_caps = gst_caps_from_string(src_caps_str.c_str());
