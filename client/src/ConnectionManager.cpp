@@ -129,15 +129,13 @@ void ConnectionManager::closeConnection() {
 
 void ConnectionManager::createRtcPC() {
   rtcConfiguration config{};
-  const char *iceServers[] = {"stun.actionvoip.com:3478",
-                              "stun:stun.barracuda.com:3478"};
-  // const char *iceServers[] = {"stun:stun.relay.metered.ca:80"};
-  // "turn:bfc22cc224cb894f60cff28a:"
-  // "KkdyHKXNNh8ptCyj@standard.relay.metered.ca:"
-  // "80",
-  // "turn:bfc22cc224cb894f60cff28a:"
-  // "KkdyHKXNNh8ptCyj@standard.relay.metered.ca:"
-  // "443"};
+  const char *iceServers[] = {"stun:stun.relay.metered.ca:80",
+                              "turn:bfc22cc224cb894f60cff28a:"
+                              "KkdyHKXNNh8ptCyj@standard.relay.metered.ca:"
+                              "80",
+                              "turn:bfc22cc224cb894f60cff28a:"
+                              "KkdyHKXNNh8ptCyj@standard.relay.metered.ca:"
+                              "443"};
 
   config.iceServers = iceServers;
   config.iceServersCount = 2;
