@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ConnectionManager.hpp"
 #include <atomic>
 #include <cstdint>
 #include <gst/app/gstappsink.h>
@@ -12,28 +11,34 @@
 
 class Streamer {
 private:
-  GstElement *pipeline = nullptr, *source = nullptr, *source_cap_filter = nullptr,
-      *converter = nullptr, *encoder = nullptr, *encoder_cap_filter = nullptr,
-      *parser = nullptr, *queue = nullptr, *packetizer = nullptr;
+  GstElement *pipeline = nullptr, *source = nullptr,
+             *source_cap_filter = nullptr, *converter = nullptr,
+             *encoder = nullptr, *encoder_cap_filter = nullptr,
+             *parser = nullptr, *queue = nullptr, *packetizer = nullptr;
   GstAppSink *sink = nullptr;
   GstBus *bus = nullptr;
   GstMessage *msg = nullptr;
   GstStateChangeReturn ret;
 
-  ConnectionManager connMan;
   std::thread captureThread;
   std::atomic<bool> captureThreadRunning{false};
 
   uint32_t ssrc;
+  int width = FOOTAGE_WIDTH;
+  int height = FOOTAGE_HEIGHT;
 
   bool constructPipeline();
   void createProdElements();
   void createDevElements();
   bool startPipeline();
-  void captureData();
+  void sendPackets(int track);
+  void destroyPipeline();
 
 public:
   Streamer();
-  void startStream();
+  void startStream(int track, int width, int height);
   void stopStream();
+  void setWidth(int width) { width = width; };
+  void setHeight(int height) { height = height; };
+  uint32_t getSsrc() { return ssrc; }
 };

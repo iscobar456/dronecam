@@ -3,6 +3,7 @@
 #include <uuid/uuid.h>
 
 std::string generate_uuid() {
+  DEBUG_MSG("enter");
   uuid_t uuid;
   char cname[37];
 
@@ -10,5 +11,6 @@ std::string generate_uuid() {
   uuid_unparse(uuid, cname);
 
   std::string cname_str(cname);
+  DEBUG_MSG("exit uuid=" << cname_str);
   return cname_str;
 }
