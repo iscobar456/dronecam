@@ -40,7 +40,7 @@
 		const config = {
 			iceServers: [
 				{
-					urls: 'stun:stun.relay.metered.ca:80'
+					urls: 'stun:stun.actionvoip.com:3478'
 				},
 				{
 					urls: 'turn:standard.relay.metered.ca:80',
