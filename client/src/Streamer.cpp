@@ -1,9 +1,9 @@
 #include "Streamer.hpp"
+#include "fmt/format.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <format>
 #include <glib-object.h>
 #include <glib.h>
 #include <gst/gst.h>
@@ -132,7 +132,7 @@ void Streamer::createProdElements() {
     return;
   }
 
-  std::string src_caps_str = std::format(
+  std::string src_caps_str = fmt::format(
       "video/x-raw,format=NV12,framerate=30/"
       "1,width=%d,height=%d,colorimetry=bt709,interlace-mode=(string)"
       "progressive",
@@ -140,7 +140,7 @@ void Streamer::createProdElements() {
   GstCaps *src_caps = gst_caps_from_string(src_caps_str.c_str());
   GstCaps *encoder_caps = gst_caps_from_string(
       "video/x-h264,profile=constrained-baseline,level=(string)3.1");
-  std::string caps_string = std::format(
+  std::string caps_string = fmt::format(
       "controls,video_gop_size={},repeat_sequence_header=1,video_bitrate_mode="
       "1,video_bitrate={},h264_i_frame_period={},h264_profile=1,h264_level=11",
       VIDEO_GOP_FRAMES, VIDEO_BITRATE, VIDEO_GOP_FRAMES);
@@ -161,7 +161,7 @@ void Streamer::createDevElements() {
   source = gst_element_factory_make("v4l2src", "source");
   source_cap_filter =
       gst_element_factory_make("capsfilter", "source cap filter");
-  std::string src_caps_str = std::format("video/x-h264,framerate=30/"
+  std::string src_caps_str = fmt::format("video/x-h264,framerate=30/"
                                          "1,width={},height={}",
                                          FOOTAGE_WIDTH, FOOTAGE_HEIGHT);
   GstCaps *src_caps = gst_caps_from_string(src_caps_str.c_str());
