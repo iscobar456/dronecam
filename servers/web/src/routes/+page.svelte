@@ -42,11 +42,12 @@
 				{
 					urls: 'stun:stun.actionvoip.com:3478'
 				},
-				{
-					urls: 'turn:standard.relay.metered.ca:80',
-					username: 'bfc22cc224cb894f60cff28a',
-					credential: 'KkdyHKXNNh8ptCyj'
-				}
+				{ urls: 'stun:stun.barracuda.com:3478' }
+				// {
+				// 	urls: 'turn:standard.relay.metered.ca:80',
+				// 	username: 'bfc22cc224cb894f60cff28a',
+				// 	credential: 'KkdyHKXNNh8ptCyj'
+				// }
 			]
 		};
 
