@@ -181,14 +181,22 @@
 
 	const connectToDrone = async (droneId: string) => {
 		peerId = droneId;
+		let width, height;
+		if (window.innerWidth > window.innerHeight) {
+			width = window.innerWidth;
+			height = window.innerHeight;
+		} else {
+			width = window.innerHeight;
+			height = window.innerWidth;
+		}
 		const message = {
 			type: 'select',
 			body: {
 				from: id,
 				to: peerId,
 				data: JSON.stringify({
-					width: window.innerWidth,
-					height: window.innerHeight
+					width: width,
+					height: height
 				})
 			}
 		};
