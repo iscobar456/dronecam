@@ -5,7 +5,7 @@
 
 <div
 	style:display={stream == null ? 'none' : 'flex'}
-	class="fixed inset-0 h-screen w-screen bg-mist-200 p-10 dark:bg-neutral-700"
+	class="fixed inset-0 h-screen w-screen bg-mist-200 dark:bg-neutral-700"
 >
 	<video
 		id="remoteVideo"
@@ -18,9 +18,9 @@
 	</video>
 
 	<button
-		class="absolute top-0 right-0 m-1 h-8 w-8 cursor-pointer dark:invert"
+		class="absolute top-0 right-0 m-1 h-8 w-8 cursor-pointer bg-white"
 		onclick={() => {
-			disconnect();
+			disconnect(true);
 		}}><img src={ExitSvg} alt="Exit icon" /></button
 	>
 </div>

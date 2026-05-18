@@ -92,7 +92,7 @@ function main() {
                 break;
 
             case 'disconnect':
-                console.log("received: " + dataString)
+                console.log("received disconnect: " + dataString)
                 console.log("closing connection");
                 const conn = getConnection(node);
                 closeConnection(conn, node);

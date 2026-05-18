@@ -186,7 +186,10 @@
 			body: {
 				from: id,
 				to: peerId,
-				data: ''
+				data: JSON.stringify({
+					width: window.innerWidth,
+					height: window.innerHeight
+				})
 			}
 		};
 		sendMessage(ws, JSON.stringify(message));
