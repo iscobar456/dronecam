@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include <cstddef>
 #include <cstdlib>
+#include <exception>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <nlohmann/json_fwd.hpp>
@@ -25,7 +26,9 @@ void openCallback(int id, void *user_ptr) {};
 void closedCallback(int id, void *user_ptr) {};
 
 void errorCallback(int id, const char *error, void *user_ptr) {
-  std::cout << "WS connection error: " << error << std::endl;
+  ConnectionManager *cm = reinterpret_cast<ConnectionManager *>(user_ptr);
+  cm->closeConnection();
+  std::terminate();
 };
 
 void messageCallback(int id, const char *message, int size, void *connMan) {
