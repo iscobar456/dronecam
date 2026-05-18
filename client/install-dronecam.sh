@@ -11,7 +11,8 @@ Description=starts camera stream and connection manager
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/dronecam
-Restart=on-failure
+Restart=always
+RestartSec=30s
 
 [Install]
 WantedBy=default.target
