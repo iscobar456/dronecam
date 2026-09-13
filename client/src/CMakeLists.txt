@@ -1,6 +1,7 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0 gstreamer-app-1.0)
 pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
+pkg_check_modules(FMT REQUIRED IMPORTED_TARGET fmt)
 
 add_executable(dronecam main.cpp)
 target_sources(dronecam PRIVATE Streamer.cpp)
@@ -10,6 +11,11 @@ target_sources(dronecam PRIVATE utils.cpp)
 target_link_libraries(dronecam PUBLIC datachannel-static)
 target_link_libraries(dronecam PUBLIC PkgConfig::GST)
 target_link_libraries(dronecam PRIVATE PkgConfig::UUID)
+target_link_libraries(dronecam PRIVATE PkgConfig::FMT)
+
+target_include_directories(dronecam PRIVATE
+    ../external/libdatachannel/deps/json/single_include
+)
 
 target_compile_definitions(dronecam PRIVATE WEBSOCKET_URL="${WEBSOCKET_URL}")
 target_compile_definitions(dronecam PRIVATE V4L2_DEV="${V4L2_DEV}")
@@ -25,8 +31,4 @@ target_compile_definitions(
     dronecam PRIVATE NACK_CACHE_PACKETS=${NACK_CACHE_PACKETS})
 target_compile_definitions(dronecam PRIVATE FOOTAGE_WIDTH=${FOOTAGE_WIDTH})
 target_compile_definitions(dronecam PRIVATE FOOTAGE_HEIGHT=${FOOTAGE_HEIGHT})
-
-target_include_directories(dronecam PRIVATE
-    ../external/libdatachannel/deps/json/single_include
-)
-
+target_compile_definitions(dronecam PRIVATE DEVICE_NAME="${DEVICE_NAME}")

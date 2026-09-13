@@ -1,19 +1,20 @@
 export type Message = {
-    type: "ident" | "list" | "sd" | "ice" | "select" | "disc",
+    type: "ident" | "list" | "sd" | "ice" | "select" | "disconnect",
     body: MessageBody,
 }
 
-export type Node = {
+
+export type PublicNode = {
     id: string,
-    name: string
+    name: string,
 }
 
 export type Response = {
     type: "ident" | "list" | "confirm",
     body: IdentResponseBody | ListResponseBody,
 }
-export type IdentResponseBody = Node;
-export type ListResponseBody = Node[];
+export type IdentResponseBody = PublicNode;
+export type ListResponseBody = PublicNode[];
 
 export type MessageBody = {
     from: string,
